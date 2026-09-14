@@ -10,6 +10,8 @@ import { glossary } from '../data/glossary'
 import { cases } from '../data/cases'
 import { moduleNotes } from '../data/modules'
 
+const MAX_RESULTS = 12
+
 let cachedIndex: SearchIndexItem[] | null = null
 
 function getGlobalIndex(): SearchIndexItem[] {
@@ -139,7 +141,7 @@ export function SearchOverlay({
   const index = getGlobalIndex()
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
-  const results = query.trim() ? runSearch(index, query).slice(0, 12) : []
+  const results = query.trim() ? runSearch(index, query).slice(0, MAX_RESULTS) : []
 
   if (!open) return null
 

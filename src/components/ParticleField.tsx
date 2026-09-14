@@ -17,8 +17,16 @@ const PALETTE = ['#f9a8d4', '#f472b6', '#ec4899', '#db2777', '#e11d48', '#ff5ec2
 const LINK_DIST = 120
 const MOUSE_FIELD = 160
 const MOUSE_LINK = 180
+const OFFSCREEN = -9999
+const DEFAULT_DENSITY = 18000
+const PARTICLE_COUNT_MIN = 30
+const PARTICLE_COUNT_MAX = 90
+const PARTICLE_SPEED = 0.35
+const WOBBLE_AMPLITUDE = 0.05
+const POINTER_FORCE = 0.9
+const LINK_ALPHA = 0.16
 
-export function ParticleField({ density = 18000 }: { density?: number }) {
+export function ParticleField({ density = DEFAULT_DENSITY }: { density?: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -33,8 +41,7 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
     let height = 0
     let raf = 0
     let particles: Particle[] = []
-    const pointer = { x: -9999, y: -9999, active: false }
-    let lastMove = 0
+    const pointer = { x: OFFSCREEN, y: OFFSCREEN, active: false }
 
     const build = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -46,12 +53,12 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
       canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const count = Math.max(30, Math.min(90, Math.floor((width * height) / density)))
+      const count = Math.max(PARTICLE_COUNT_MIN, Math.min(PARTICLE_COUNT_MAX, Math.floor((width * height) / density)))
       particles = Array.from({ length: count }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
+        vx: (Math.random() - 0.5) * PARTICLE_SPEED,
+        vy: (Math.random() - 0.5) * PARTICLE_SPEED,
         r: 1 + Math.random() * 1.6,
         hue: PALETTE[Math.floor(Math.random() * PALETTE.length)],
         baseAlpha: 0.25 + Math.random() * 0.45,
@@ -64,7 +71,7 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
       ctx.clearRect(0, 0, width, height)
 
       for (const p of particles) {
-        const wobble = Math.sin(t / 1400 + p.phase) * 0.05
+        const wobble = Math.sin(t / 1400 + p.phase) * WOBBLE_AMPLITUDE
         p.x += p.vx + wobble
         p.y += p.vy
         if (p.x < -20) p.x = width + 20
@@ -78,7 +85,7 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
           const d2 = dx * dx + dy * dy
           if (d2 < MOUSE_FIELD * MOUSE_FIELD && d2 > 0.01) {
             const d = Math.sqrt(d2)
-            const force = (1 - d / MOUSE_FIELD) * 0.9
+            const force = (1 - d / MOUSE_FIELD) * POINTER_FORCE
             p.x += (dx / d) * force
             p.y += (dy / d) * force
           }
@@ -110,7 +117,7 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
           const dy = a.y - b.y
           const d2 = dx * dx + dy * dy
           if (d2 < LINK_DIST * LINK_DIST) {
-            const alpha = (1 - Math.sqrt(d2) / LINK_DIST) * 0.16
+            const alpha = (1 - Math.sqrt(d2) / LINK_DIST) * LINK_ALPHA
             ctx.globalAlpha = alpha
             ctx.strokeStyle = '#ec4899'
             ctx.lineWidth = 1
@@ -160,13 +167,12 @@ export function ParticleField({ density = 18000 }: { density?: number }) {
       pointer.x = e.clientX
       pointer.y = e.clientY
       pointer.active = true
-      lastMove = Date.now()
     }
 
     const onLeave = () => {
       pointer.active = false
-      pointer.x = -9999
-      pointer.y = -9999
+      pointer.x = OFFSCREEN
+      pointer.y = OFFSCREEN
     }
 
     build()

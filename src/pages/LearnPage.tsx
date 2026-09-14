@@ -60,7 +60,7 @@ export default function LearnPage() {
           .map((c) => {
             const list = getTopicsByCategory(c)
             if (list.length === 0) return null
-            const done = list.filter((t) => progress.completedTopics.includes(t.id)).length
+            const completedCount = list.filter((t) => progress.completedTopics.includes(t.id)).length
             return (
               <div key={c} className={active === 'all' ? 'mb-10' : ''}>
                 <div className="flex items-baseline justify-between gap-3 mb-4">
@@ -68,8 +68,8 @@ export default function LearnPage() {
                     <Icon name={(catsMeta.find((m) => m.id === c)?.icon ?? 'learn') as never} className="w-4 h-4 text-cyan-400" />
                     {categoryLabel(c)}
                   </h2>
-                  {active === 'all' && done > 0 && (
-                    <span className="text-xs font-mono text-gray-500">{done}/{list.length} complete</span>
+                  {active === 'all' && completedCount > 0 && (
+                    <span className="text-xs font-mono text-gray-500">{completedCount}/{list.length} complete</span>
                   )}
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

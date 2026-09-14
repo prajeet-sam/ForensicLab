@@ -2,9 +2,8 @@ import { Link } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { useSEO } from '../lib/seo'
 import { EvidenceJourney, JourneyLegend } from '../components/EvidenceJourney'
-import { TopicCard, DisciplineCard, CaseCard } from '../components/display'
+import { TopicCard, CaseCard } from '../components/display'
 import { topics, getTopicsByCategory } from '../data/topics-index'
-import { disciplines } from '../data/disciplines'
 import { principles } from '../data/principles'
 import { cases } from '../data/cases'
 import { getProgress, getCompletionPercent } from '../lib/progress'
@@ -26,11 +25,8 @@ export default function HomePage() {
       'Explore how science transforms evidence into interpretable findings — from blood and DNA to fingerprints, toxicology, digital evidence and trace materials.',
   })
 
-  const allTopics = topics
   const progress = getProgress()
-  const per = getCompletionPercent(allTopics.map((t) => t.id))
-  const biology = getTopicsByCategory('biology').slice(0, 4)
-  const packed = allTopics.filter((t) => t.simulator).slice(0, 2)
+  const per = getCompletionPercent(topics.map((t) => t.id))
 
   return (
     <div>

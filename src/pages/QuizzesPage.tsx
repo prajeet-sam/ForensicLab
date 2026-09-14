@@ -3,7 +3,7 @@ import { quizModules } from '../data/quizzes'
 import { PageHeader, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { getQuizScore } from '../lib/progress'
-import { QuizEngine } from '../components/QuizEngine'
+import { QuizEngine } from '../components/engines'
 
 export default function QuizzesPage() {
   useSEO({

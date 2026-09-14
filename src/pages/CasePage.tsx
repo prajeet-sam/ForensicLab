@@ -6,6 +6,10 @@ import { PageHeader, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { EvidenceCard, ProcessTimeline } from '../components/display'
 import { recordCaseDecision } from '../lib/progress'
+import type { CaseFile } from '../lib/types'
+
+const FREE_TEXT_CHOICE = -1
+const MIN_INTERPRETATION = 20
 
 const correctAnswers: Record<string, Record<string, number>> = {
   'red-stain': { 'ds-1': 1, 'ds-2': 1, 'ds-3': 1, 'ds-4': 1, 'ds-5': 0, 'ds-6': 1, 'ds-7': 3 },
@@ -51,7 +55,7 @@ const feedbackText: Record<string, Record<string, string>> = {
 }
 
 const interpretGuide = [
-  { key: 'supported', label: 'Supported', desc: 'Your wording matched a source-level, calibwered conclusion ("consistent with", "could be", "supports contact").', tone: 'green' },
+  { key: 'supported', label: 'Supported', desc: 'Your wording matched a source-level, calibrated conclusion ("consistent with", "could be", "supports contact").', tone: 'green' },
   { key: 'requires', label: 'Requires additional evidence', desc: 'The conclusion is reasonable but more context is needed before it contributes meaning.', tone: 'amber' },
   { key: 'overstated', label: 'Overstated', desc: 'Your wording asserted more than the data support — certainty and activity claims beyond source level.', tone: 'crimson' },
   { key: 'notsupported', label: 'Not supported', desc: 'Your conclusion went against what the evidence can show.', tone: 'slate' },
@@ -99,13 +103,241 @@ function assessInterpretation(text: string): { flags: Set<string>; reason: strin
   return { flags, reason: 'The conclusion neither over-claimed nor clearly grounded itself in the evidence. Try naming the specific finding and its meaningful limit.' }
 }
 
+function DecisionStepper({
+  caseData,
+  answers,
+  revealed,
+  correctFor,
+  feedbackFor,
+  showHint,
+  stepIndex,
+  submitted,
+  onStepChange,
+  onSelect,
+  onToggleHint,
+  onFreeText,
+}: {
+  caseData: CaseFile
+  answers: Record<string, { chosen: number; hintUsed: boolean }>
+  revealed: Record<string, boolean>
+  correctFor: Record<string, number>
+  feedbackFor: Record<string, string>
+  showHint: Record<string, boolean>
+  stepIndex: number
+  submitted: boolean
+  onStepChange: (index: number) => void
+  onSelect: (optIdx: number) => void
+  onToggleHint: (id: string) => void
+  onFreeText: (id: string, value: { chosen: number; hintUsed: boolean; text: string }) => void
+}) {
+  const current = caseData.decisions[stepIndex]
+  const isLast = stepIndex === caseData.decisions.length - 1
+  const allAnswered = answers[current.id] !== undefined
+
+  return (
+    <section className="mb-10">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <h2 className="text-xl font-bold tracking-tight">Decision {stepIndex + 1} of {caseData.decisions.length}</h2>
+        <div className="flex gap-1.5" aria-label="Decision steps">
+          {caseData.decisions.map((d, i) => (
+            <button
+              key={d.id}
+              onClick={() => onStepChange(i)}
+              className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                answers[d.id] ? 'bg-emerald-400' : i === stepIndex ? 'bg-crimson-400' : 'bg-navy-600 hover:bg-navy-500'
+              }`}
+              aria-label={`Jump to decision ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div key={current.id} className="glass-panel p-5 sm:p-6 animate-fade-in">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-1.5">
+              {current.kind === 'free-text' ? 'Write your answer' : 'Choose the best response'} · {String(stepIndex + 1).padStart(2, '0')}
+            </p>
+            <h3 className="text-lg font-bold text-white leading-snug">{current.question}</h3>
+          </div>
+          <button
+            onClick={() => onToggleHint(current.id)}
+            className="shrink-0 btn-ghost !px-2.5 !py-1.5 !text-xs text-amber-400"
+            aria-expanded={showHint[current.id]}
+          >
+            {showHint[current.id] ? 'Hide hint' : 'Hint'}
+          </button>
+        </div>
+
+        {showHint[current.id] && !revealed[current.id] && (
+          <p className="text-sm text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 mb-4 animate-fade-in">
+            <Icon name="lightbulb" className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+            {current.hint}
+          </p>
+        )}
+
+        {current.kind === 'choice' && current.options ? (
+          <div className="grid gap-2" role="group">
+            {current.options.map((opt, i) => {
+              const chosen = answers[current.id]?.chosen === i
+              const isCorrect = correctFor[current.id] === i
+              const state = revealed[current.id] ? (isCorrect ? 'correct' : chosen ? 'wrong' : 'muted') : 'idle'
+              return (
+                <button
+                  key={opt}
+                  onClick={() => onSelect(i)}
+                  disabled={revealed[current.id]}
+                  className={`text-left px-4 py-3 rounded-lg border text-sm transition-all duration-150 ${
+                    state === 'correct'
+                      ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-100'
+                      : state === 'wrong'
+                      ? 'border-crimson-500/60 bg-crimson-600/15 text-crimson-100'
+                      : state === 'muted'
+                      ? 'border-navy-600/40 text-gray-500'
+                      : chosen
+                      ? 'border-crimson-500/70 bg-crimson-600/10 text-white'
+                      : 'border-navy-600/50 text-gray-300 hover:border-crimson-500/50 hover:bg-navy-800'
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-mono border ${
+                      state === 'correct' ? 'border-emerald-500/60 text-emerald-400'
+                      : state === 'wrong' ? 'border-crimson-500/60 text-crimson-400'
+                      : 'border-navy-500/60 text-gray-500'
+                    }`}>
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="leading-relaxed">{opt}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <textarea
+            value={(answers[current.id] as unknown as { text?: string } | undefined)?.text ?? ''}
+            onChange={(e) => onFreeText(current.id, { chosen: FREE_TEXT_CHOICE, hintUsed: !!showHint[current.id], text: e.target.value })}
+            rows={4}
+            placeholder={current.textPlaceholder ?? 'Write your reasoning…'}
+            className="w-full bg-navy-800 border border-navy-600/50 text-gray-200 text-sm rounded-lg px-4 py-3 outline-none focus:border-cyan-500"
+          />
+        )}
+
+        {revealed[current.id] && feedbackFor[current.id] && (
+          <div className={`mt-4 rounded-lg px-4 py-3 text-sm leading-relaxed animate-fade-in ${
+            correctFor[current.id] === answers[current.id]?.chosen
+              ? 'bg-emerald-500/10 text-emerald-200/90 border border-emerald-500/30'
+              : 'bg-crimson-600/10 text-crimson-200/90 border border-crimson-500/30'
+          }`}>
+            <span className="font-semibold">
+              {correctFor[current.id] === answers[current.id]?.chosen ? 'Correct reasoning. ' : 'This choice cuts against the science. '}
+            </span>
+            {feedbackFor[current.id]}
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {!isLast ? (
+            <button className="btn-secondary" disabled={!revealed[current.id] && !allAnswered} onClick={() => onStepChange(stepIndex + 1)}>
+              Next decision
+              <Icon name="arrow-right" className="w-4 h-4" />
+            </button>
+          ) : !submitted ? (
+            <span className="text-xs text-gray-500">All decisions are the foundation — now make your interpretation below.</span>
+          ) : null}
+          {stepIndex > 0 && (
+            <button className="btn-ghost !px-3 !py-2 !text-sm" onClick={() => onStepChange(Math.max(0, stepIndex - 1))}>
+              ← Previous
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AssessmentPanel({
+  caseData,
+  answers,
+  correctCount,
+  guidance,
+}: {
+  caseData: CaseFile
+  answers: Record<string, { chosen: number; hintUsed: boolean }>
+  correctCount: number
+  guidance: { flags: Set<string>; reason: string }
+}) {
+  const correctFor = correctAnswers[caseData.id] ?? {}
+
+  return (
+    <section className="mb-10 animate-fade-in">
+      <h2 className="text-xl font-bold tracking-tight mb-1 flex items-center gap-2">
+        <Icon name="shield" className="w-5 h-5 text-cyan-400" /> Scientific assessment
+      </h2>
+      <p className="text-sm text-gray-400 mb-5">
+        An automated, educational screen of your wording. No code can fully judge an interpretation — but it can
+        catch the classic overstatement pattern.
+      </p>
+
+      <div className="glass-panel p-5 sm:p-6 mb-5">
+        <p className="text-xs font-mono uppercase tracking-wider text-gray-500 mb-2">Automated reading</p>
+        <p className="text-gray-200 leading-relaxed">{guidance.reason}</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        {interpretGuide.map((g) => {
+          const flagged =
+            (g.key === 'supported' && guidance.flags.has('supported')) ||
+            (g.key === 'requires' && guidance.flags.has('requires')) ||
+            (g.key === 'overstated' && guidance.flags.has('overstated')) ||
+            (g.key === 'notsupported' && guidance.flags.has('notsupported'))
+          return (
+            <div key={g.key} className={`rounded-lg border p-4 transition-colors ${
+              flagged ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-navy-600/40 bg-navy-900/50'
+            }`}>
+              <h3 className={`font-bold mb-1.5 ${flagged ? 'text-emerald-300' : 'text-gray-300'}`}>
+                {flagged && <Icon name="check" className="w-4 h-4 inline mr-1 -mt-0.5" />}
+                {g.label}
+              </h3>
+              <p className="text-xs text-gray-400 leading-relaxed">{g.desc}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Decision score */}
+      <div className="glass-panel p-5 mt-6">
+        <h3 className="font-bold text-white mb-1">Decision review</h3>
+        <p className="text-sm text-gray-400 mb-4">
+          You answered {correctCount} of {caseData.decisions.length} decisions with the scientifically supported choice.
+        </p>
+        <div className="space-y-1.5">
+          {caseData.decisions.map((d, i) => {
+            const got = correctFor[d.id] === answers[d.id]?.chosen
+            return (
+              <div key={d.id} className="flex items-center gap-2.5 text-sm">
+                <span className={`h-5 w-5 shrink-0 rounded-md inline-flex items-center justify-center ${
+                  got ? 'bg-emerald-500/20 text-emerald-400' : 'bg-crimson-600/20 text-crimson-400'
+                }`}>
+                  <Icon name={got ? 'check' : 'close'} className="w-3 h-3" />
+                </span>
+                <span className="text-gray-300">{d.question.length > 90 ? d.question.slice(0, 90) + '…' : d.question}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function CasePage() {
   const { caseSlug } = useParams<{ caseSlug: string }>()
-  const c = getCaseBySlug(caseSlug ?? '')
+  const caseData = getCaseBySlug(caseSlug ?? '')
 
   useSEO({
-    title: c ? `${c.title} — Case File` : 'Case not found',
-    description: c?.summary,
+    title: caseData ? `${caseData.title} — Case File` : 'Case not found',
+    description: caseData?.summary,
     path: `/cases/${caseSlug}`,
   })
 
@@ -119,7 +351,7 @@ export default function CasePage() {
 
   const guidance = useMemo(() => (submitted ? assessInterpretation(interpretation) : null), [submitted, interpretation])
 
-  if (!c) {
+  if (!caseData) {
     return (
       <div className="page-container">
         <PageHeader title="Case not found" />
@@ -128,35 +360,28 @@ export default function CasePage() {
     )
   }
 
-  const correctFor = correctAnswers[c.id] ?? {}
-  const feedbackFor = feedbackText[c.id] ?? {}
+  const correctFor = correctAnswers[caseData.id] ?? {}
+  const feedbackFor = feedbackText[caseData.id] ?? {}
 
   const answeredCount = Object.keys(answers).length
   const correctCount = Object.entries(answers).filter(([id, a]) => correctFor[id] === a.chosen).length
-  const current = c.decisions[stepIndex]
-  const isLast = stepIndex === c.decisions.length - 1
-  const allAnswered = answers[current.id] !== undefined
+  const current = caseData.decisions[stepIndex]
 
   const select = (optIdx: number) => {
     if (revealed[current.id]) return
     const next = { ...answers, [current.id]: { chosen: optIdx, hintUsed: !!showHint[current.id] } }
     setAnswers(next)
     setRevealed((r) => ({ ...r, [current.id]: true }))
-    recordCaseDecision(c.id, Object.keys(next).length, false)
-  }
-
-  const nextStep = () => {
-    if (isLast) return
-    setStepIndex((s) => s + 1)
+    recordCaseDecision(caseData.id, Object.keys(next).length, false)
   }
 
   const submitInterpretation = () => {
     setSubmitted(true)
     setShowAssessment(true)
-    recordCaseDecision(c.id, c.decisions.length, true)
+    recordCaseDecision(caseData.id, caseData.decisions.length, true)
   }
 
-  const progressPct = Math.round((answeredCount / c.decisions.length) * 100)
+  const progressPct = Math.round((answeredCount / caseData.decisions.length) * 100)
 
   return (
     <div className="page-container">
@@ -164,22 +389,22 @@ export default function CasePage() {
 
       <div className="mt-4 mb-8">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-3 rounded-lg border border-navy-600/40 bg-navy-900/50 px-4 py-3">
-          <Meta label="Agency" value={c.agency ?? 'State Forensic Science Laboratory'} />
-          <Meta label="Case ref" value={c.caseRef ?? c.tag.split(' · ')[0]} />
-          <Meta label="Filed" value={c.date ?? '2026'} />
-          <Meta label="Unit" value={c.tag.split(' · ')[1] ?? 'Laboratory'} />
-          <span className="ml-auto text-[10px] font-mono uppercase tracking-widest text-gray-500">Difficulty · {c.difficulty}</span>
+          <Meta label="Agency" value={caseData.agency ?? 'State Forensic Science Laboratory'} />
+          <Meta label="Case ref" value={caseData.caseRef ?? caseData.tag.split(' · ')[0]} />
+          <Meta label="Filed" value={caseData.date ?? '2026'} />
+          <Meta label="Unit" value={caseData.tag.split(' · ')[1] ?? 'Laboratory'} />
+          <span className="ml-auto text-[10px] font-mono uppercase tracking-widest text-gray-500">Difficulty · {caseData.difficulty}</span>
         </div>
-        <p className="text-xs font-mono uppercase tracking-widest text-crimson-400 mb-2">{c.tag}</p>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{c.title}</h1>
-        <p className="text-gray-400 mt-2">{c.subtitle}</p>
+        <p className="text-xs font-mono uppercase tracking-widest text-crimson-400 mb-2">{caseData.tag}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{caseData.title}</h1>
+        <p className="text-gray-400 mt-2">{caseData.subtitle}</p>
       </div>
 
       {/* Progress */}
       <div className="mb-8">
         <div className="flex justify-between text-xs text-gray-400 mb-1.5">
           <span>Investigation progress</span>
-          <span className="font-mono">{answeredCount}/{c.decisions.length} decisions · {progressPct}%</span>
+          <span className="font-mono">{answeredCount}/{caseData.decisions.length} decisions · {progressPct}%</span>
         </div>
         <div className="h-2 rounded-full bg-navy-700 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-crimson-500 to-crimson-400 transition-all duration-500" style={{ width: `${progressPct}%` }} />
@@ -193,7 +418,7 @@ export default function CasePage() {
             <h2 className="text-sm font-mono uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-2">
               <Icon name="report" className="w-4 h-4" /> Case brief
             </h2>
-            <p className="text-gray-300 leading-relaxed">{c.brief}</p>
+            <p className="text-gray-300 leading-relaxed">{caseData.brief}</p>
           </div>
 
           <div className="glass-panel p-5">
@@ -201,7 +426,7 @@ export default function CasePage() {
               <Icon name="camera" className="w-4 h-4" /> Scene summary
             </h2>
             <ul className="space-y-2">
-              {c.scenario.map((s, i) => (
+              {caseData.scenario.map((s, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-gray-300">
                   <span className="text-[10px] font-mono text-gray-500 mt-0.5">{String(i + 1).padStart(2, '0')}</span>
                   {s}
@@ -215,136 +440,28 @@ export default function CasePage() {
               <Icon name="bag" className="w-4 h-4" /> Exhibits
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {c.evidence.map((e) => (
-                <EvidenceCard key={e.id} id={e.id} label={e.description} tone="crimson" />
+              {caseData.evidence.map((item) => (
+                <EvidenceCard key={item.id} id={item.id} label={item.description} tone="crimson" />
               ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Decisions flow */}
-      <section className="mb-10">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <h2 className="text-xl font-bold tracking-tight">Decision {stepIndex + 1} of {c.decisions.length}</h2>
-          <div className="flex gap-1.5" aria-label="Decision steps">
-            {c.decisions.map((d, i) => (
-              <button
-                key={d.id}
-                onClick={() => setStepIndex(i)}
-                className={`h-2.5 w-2.5 rounded-full transition-colors ${
-                  answers[d.id] ? 'bg-emerald-400' : i === stepIndex ? 'bg-crimson-400' : 'bg-navy-600 hover:bg-navy-500'
-                }`}
-                aria-label={`Jump to decision ${i + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div key={current.id} className="glass-panel p-5 sm:p-6 animate-fade-in">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-1.5">
-                {current.kind === 'free-text' ? 'Write your answer' : 'Choose the best response'} · {String(stepIndex + 1).padStart(2, '0')}
-              </p>
-              <h3 className="text-lg font-bold text-white leading-snug">{current.question}</h3>
-            </div>
-            <button
-              onClick={() => setShowHint((h) => ({ ...h, [current.id]: !h[current.id] }))}
-              className="shrink-0 btn-ghost !px-2.5 !py-1.5 !text-xs text-amber-400"
-              aria-expanded={showHint[current.id]}
-            >
-              {showHint[current.id] ? 'Hide hint' : 'Hint'}
-            </button>
-          </div>
-
-          {showHint[current.id] && !revealed[current.id] && (
-            <p className="text-sm text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 mb-4 animate-fade-in">
-              <Icon name="lightbulb" className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
-              {current.hint}
-            </p>
-          )}
-
-          {current.kind === 'choice' && current.options ? (
-            <div className="grid gap-2" role="group">
-              {current.options.map((opt, i) => {
-                const chosen = answers[current.id]?.chosen === i
-                const isCorrect = correctFor[current.id] === i
-                const state = revealed[current.id] ? (isCorrect ? 'correct' : chosen ? 'wrong' : 'muted') : 'idle'
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => select(i)}
-                    disabled={revealed[current.id]}
-                    className={`text-left px-4 py-3 rounded-lg border text-sm transition-all duration-150 ${
-                      state === 'correct'
-                        ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-100'
-                        : state === 'wrong'
-                        ? 'border-crimson-500/60 bg-crimson-600/15 text-crimson-100'
-                        : state === 'muted'
-                        ? 'border-navy-600/40 text-gray-500'
-                        : chosen
-                        ? 'border-crimson-500/70 bg-crimson-600/10 text-white'
-                        : 'border-navy-600/50 text-gray-300 hover:border-crimson-500/50 hover:bg-navy-800'
-                    }`}
-                  >
-                    <span className="flex items-start gap-3">
-                      <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-mono border ${
-                        state === 'correct' ? 'border-emerald-500/60 text-emerald-400'
-                        : state === 'wrong' ? 'border-crimson-500/60 text-crimson-400'
-                        : 'border-navy-500/60 text-gray-500'
-                      }`}>
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="leading-relaxed">{opt}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <textarea
-              value={(answers[current.id] as unknown as { text?: string } | undefined)?.text ?? ''}
-              onChange={(e) => {
-                const next = { ...answers, [current.id]: { chosen: -1, hintUsed: !!showHint[current.id], text: e.target.value } }
-                setAnswers(next)
-              }}
-              rows={4}
-              placeholder={current.textPlaceholder ?? 'Write your reasoning…'}
-              className="w-full bg-navy-800 border border-navy-600/50 text-gray-200 text-sm rounded-lg px-4 py-3 outline-none focus:border-cyan-500"
-            />
-          )}
-
-          {revealed[current.id] && feedbackFor[current.id] && (
-            <div className={`mt-4 rounded-lg px-4 py-3 text-sm leading-relaxed animate-fade-in ${
-              correctFor[current.id] === answers[current.id]?.chosen
-                ? 'bg-emerald-500/10 text-emerald-200/90 border border-emerald-500/30'
-                : 'bg-crimson-600/10 text-crimson-200/90 border border-crimson-500/30'
-            }`}>
-              <span className="font-semibold">
-                {correctFor[current.id] === answers[current.id]?.chosen ? 'Correct reasoning. ' : 'This choice cuts against the science. '}
-              </span>
-              {feedbackFor[current.id]}
-            </div>
-          )}
-
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            {!isLast ? (
-              <button className="btn-secondary" disabled={!revealed[current.id] && !allAnswered} onClick={nextStep}>
-                Next decision
-                <Icon name="arrow-right" className="w-4 h-4" />
-              </button>
-            ) : !submitted ? (
-              <span className="text-xs text-gray-500">All decisions are the foundation — now make your interpretation below.</span>
-            ) : null}
-            {stepIndex > 0 && (
-              <button className="btn-ghost !px-3 !py-2 !text-sm" onClick={() => setStepIndex((s) => Math.max(0, s - 1))}>
-                ← Previous
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
+      <DecisionStepper
+        caseData={caseData}
+        answers={answers}
+        revealed={revealed}
+        correctFor={correctFor}
+        feedbackFor={feedbackFor}
+        showHint={showHint}
+        stepIndex={stepIndex}
+        submitted={submitted}
+        onStepChange={setStepIndex}
+        onSelect={select}
+        onToggleHint={(id) => setShowHint((h) => ({ ...h, [id]: !h[id] }))}
+        onFreeText={(id, value) => setAnswers((prev) => ({ ...prev, [id]: value }))}
+      />
 
       {/* Interpretation */}
       <section className="mb-10">
@@ -368,7 +485,7 @@ export default function CasePage() {
             aria-label="Your scientific interpretation of the evidence"
           />
           {!submitted ? (
-            <button className="btn-primary mt-4" onClick={submitInterpretation} disabled={interpretation.trim().length < 20}>
+            <button className="btn-primary mt-4" onClick={submitInterpretation} disabled={interpretation.trim().length < MIN_INTERPRETATION}>
               Submit interpretation
               <Icon name="check" className="w-4 h-4" />
             </button>
@@ -380,7 +497,7 @@ export default function CasePage() {
               Revise interpretation
             </button>
           )}
-          {!submitted && interpretation.trim().length > 0 && interpretation.trim().length < 20 && (
+          {!submitted && interpretation.trim().length > 0 && interpretation.trim().length < MIN_INTERPRETATION && (
             <p className="text-xs text-amber-400 mt-2">A useful interpretation needs more than one clause — add the level and the limits.</p>
           )}
         </div>
@@ -388,64 +505,7 @@ export default function CasePage() {
 
       {/* Scientific assessment */}
       {submitted && guidance && showAssessment && (
-        <section className="mb-10 animate-fade-in">
-          <h2 className="text-xl font-bold tracking-tight mb-1 flex items-center gap-2">
-            <Icon name="shield" className="w-5 h-5 text-cyan-400" /> Scientific assessment
-          </h2>
-          <p className="text-sm text-gray-400 mb-5">
-            An automated, educational screen of your wording. No code can fully judge an interpretation — but it can
-            catch the classic overstatement pattern.
-          </p>
-
-          <div className="glass-panel p-5 sm:p-6 mb-5">
-            <p className="text-xs font-mono uppercase tracking-wider text-gray-500 mb-2">Automated reading</p>
-            <p className="text-gray-200 leading-relaxed">{guidance.reason}</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            {interpretGuide.map((g) => {
-              const flagged =
-                (g.key === 'supported' && guidance.flags.has('supported')) ||
-                (g.key === 'requires' && guidance.flags.has('requires')) ||
-                (g.key === 'overstated' && guidance.flags.has('overstated')) ||
-                (g.key === 'notsupported' && guidance.flags.has('notsupported'))
-              return (
-                <div key={g.key} className={`rounded-lg border p-4 transition-colors ${
-                  flagged ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-navy-600/40 bg-navy-900/50'
-                }`}>
-                  <h3 className={`font-bold mb-1.5 ${flagged ? 'text-emerald-300' : 'text-gray-300'}`}>
-                    {flagged && <Icon name="check" className="w-4 h-4 inline mr-1 -mt-0.5" />}
-                    {g.label}
-                  </h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{g.desc}</p>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Decision score */}
-          <div className="glass-panel p-5 mt-6">
-            <h3 className="font-bold text-white mb-1">Decision review</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              You answered {correctCount} of {c.decisions.length} decisions with the scientifically supported choice.
-            </p>
-            <div className="space-y-1.5">
-              {c.decisions.map((d, i) => {
-                const got = correctFor[d.id] === answers[d.id]?.chosen
-                return (
-                  <div key={d.id} className="flex items-center gap-2.5 text-sm">
-                    <span className={`h-5 w-5 shrink-0 rounded-md inline-flex items-center justify-center ${
-                      got ? 'bg-emerald-500/20 text-emerald-400' : 'bg-crimson-600/20 text-crimson-400'
-                    }`}>
-                      <Icon name={got ? 'check' : 'close'} className="w-3 h-3" />
-                    </span>
-                    <span className="text-gray-300">{d.question.length > 90 ? d.question.slice(0, 90) + '…' : d.question}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
+        <AssessmentPanel caseData={caseData} answers={answers} correctCount={correctCount} guidance={guidance} />
       )}
 
       {/* Expected concepts + objectives */}
@@ -454,7 +514,7 @@ export default function CasePage() {
           <div className="glass-panel p-5">
             <h2 className="text-sm font-mono uppercase tracking-wider text-cyan-400 mb-3">What good practice expects</h2>
             <ul className="space-y-2">
-              {c.expectedConcepts.map((e) => (
+              {caseData.expectedConcepts.map((e) => (
                 <li key={e} className="flex items-start gap-2 text-sm text-gray-300">
                   <Icon name="check" className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
                   {e}
@@ -465,7 +525,7 @@ export default function CasePage() {
           <div className="glass-panel p-5">
             <h2 className="text-sm font-mono uppercase tracking-wider text-crimson-400 mb-3">Learning objectives</h2>
             <ul className="space-y-2">
-              {c.learningObjectives.map((o) => (
+              {caseData.learningObjectives.map((o) => (
                 <li key={o} className="flex items-start gap-2 text-sm text-gray-300">
                   <Icon name="lightbulb" className="w-4 h-4 text-crimson-400 mt-0.5 shrink-0" />
                   {o}
@@ -480,7 +540,7 @@ export default function CasePage() {
       <section className="mb-10">
         <h2 className="text-xl font-bold tracking-tight mb-4">Science in this case</h2>
         <div className="grid md:grid-cols-3 gap-3">
-          {c.keyScience.map((k) => (
+          {caseData.keyScience.map((k) => (
             <div key={k.title} className="glass-panel p-5">
               <h3 className="font-bold text-white mb-2">{k.title}</h3>
               <p className="text-sm text-gray-400 leading-relaxed">{k.body}</p>
@@ -490,7 +550,7 @@ export default function CasePage() {
       </section>
 
       <InfoBlock title="Interpretation note" tone="amber">
-        {c.interpretationNote}
+        {caseData.interpretationNote}
       </InfoBlock>
     </div>
   )

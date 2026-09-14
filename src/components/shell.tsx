@@ -50,22 +50,14 @@ export function Navbar({ onOpenSearch }: { onOpenSearch: () => void }) {
             <NavLink
               key={l.to}
               to={l.to}
-              className={({ isActive }) =>
-                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? 'text-cyan-400 bg-cyan-600/10' : 'text-gray-300 hover:text-white hover:bg-navy-800'
-                }`
-              }
+              className={({ isActive }) => navLinkClass(isActive)}
             >
               {l.label}
             </NavLink>
           ))}
           <NavLink
             to="/principles"
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                isActive ? 'text-cyan-400 bg-cyan-600/10' : 'text-gray-300 hover:text-white hover:bg-navy-800'
-              }`
-            }
+            className={({ isActive }) => navLinkClass(isActive)}
           >
             Principles
           </NavLink>
@@ -104,31 +96,27 @@ export function Navbar({ onOpenSearch }: { onOpenSearch: () => void }) {
       </div>
 
       {mobileOpen && (
-<nav className="lg:hidden border-t border-navy-700/60 bg-navy-900/95 animate-fade-in" aria-label="Mobile dropdown">
-            <div className="px-4 py-3 space-y-1">
-              {[
-                ...desktopLinks,
-                { to: '/principles', label: 'Scientific Principles', icon: 'principles' as const },
-                { to: '/quizzes', label: 'Quizzes', icon: 'quiz' as const },
-                { to: '/exam', label: 'Exam Center', icon: 'check' as const },
-                { to: '/about', label: 'About', icon: 'info' as const },
-              ].map((l) => (
-                <NavLink
-                  key={l.to}
-                  to={l.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium ${
-                      isActive ? 'text-cyan-400 bg-cyan-600/10' : 'text-gray-300 hover:text-white hover:bg-navy-800'
-                    }`
-                  }
-                >
-                  <Icon name={l.icon} className="w-4 h-4 opacity-70" />
-                  {l.label}
-                </NavLink>
-              ))}
-            </div>
-          </nav>
+        <nav className="lg:hidden border-t border-navy-700/60 bg-navy-900/95 animate-fade-in" aria-label="Mobile dropdown">
+          <div className="px-4 py-3 space-y-1">
+            {[
+              ...desktopLinks,
+              { to: '/principles', label: 'Scientific Principles', icon: 'principles' as const },
+              { to: '/quizzes', label: 'Quizzes', icon: 'quiz' as const },
+              { to: '/exam', label: 'Exam Center', icon: 'check' as const },
+              { to: '/about', label: 'About', icon: 'info' as const },
+            ].map((l) => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) => navLinkClass(isActive, true)}
+              >
+                <Icon name={l.icon} className="w-4 h-4 opacity-70" />
+                {l.label}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
       )}
     </header>
   )
@@ -311,10 +299,9 @@ function FooterCol({ title, links }: { title: string; links: { to: string; label
   )
 }
 
-export { useGlobalSearch }
-function useGlobalSearch() {
-  const [open, setOpen] = useState(false)
-  const location = useLocation()
-  const last = location.pathname
-  return { open, setOpen, last }
+function navLinkClass(active: boolean, mobile = false): string {
+  const base = mobile
+    ? 'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium'
+    : 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors'
+  return `${base} ${active ? 'text-cyan-400 bg-cyan-600/10' : 'text-gray-300 hover:text-white hover:bg-navy-800'}`
 }

@@ -6,6 +6,7 @@ import type { ModuleNote } from '../data/modules'
 import { PageHeader, InfoBlock, DefinitionStrip } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { getTopic } from '../data/topics-index'
+import type { Topic } from '../lib/types'
 
 const categoryFilters: { label: string; value: ModuleNote['category'] | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -109,7 +110,7 @@ export function ModuleDetailPage() {
     )
   }
 
-  const relatedTopics = (mod.relatedTopics ?? []).map((id) => getTopic(id)).filter(Boolean)
+  const relatedTopics = (mod.relatedTopics ?? []).map((id) => getTopic(id)).filter((t): t is Topic => t != null)
 
   return (
     <div className="page-container max-w-3xl">
@@ -178,12 +179,12 @@ export function ModuleDetailPage() {
           <div className="flex flex-wrap gap-2">
             {relatedTopics.map((t) => (
               <Link
-                key={t!.id}
-                to={`/learn/${t!.id}`}
+                key={t.id}
+                to={`/learn/${t.id}`}
                 className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-cyan-500/40 text-cyan-300 hover:bg-cyan-600/20 transition-colors"
               >
                 <Icon name="arrow-right" className="w-3 h-3" />
-                {t!.shortTitle ?? t!.title}
+                {t.shortTitle ?? t.title}
               </Link>
             ))}
           </div>

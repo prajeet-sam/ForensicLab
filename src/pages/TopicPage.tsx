@@ -2,13 +2,16 @@ import { useParams, Link } from 'react-router-dom'
 import { getTopic, categoryLabel } from '../data/topics-index'
 import { useSEO } from '../lib/seo'
 import { TopicVisual } from '../components/TopicVisual'
-import { QuizEngine } from '../components/QuizEngine'
+import { QuizEngine } from '../components/engines'
 import { ProcessTimeline, ScientificDiagram, FlowBox, FlowArrow, HorizontalFlow } from '../components/display'
 import { DefinitionStrip, Badge, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { completeTopic, isTopicCompleted } from '../lib/progress'
 import { useState } from 'react'
 import { getAllSimulators } from '../data/simulators'
+import type { Topic } from '../lib/types'
+
+const PROCESS_STEPS_PREVIEW = 4
 
 export default function TopicPage() {
   const { topicId } = useParams<{ topicId: string }>()
@@ -38,7 +41,8 @@ export default function TopicPage() {
   }
 
   const tone = (topic.color ?? 'cyan') as 'cyan' | 'crimson' | 'amber' | 'slate'
-  const simulatorLink = getSimulatorLink(topic)
+  const topicVisualRendered = TopicVisual({ topic })
+  const simulator = getSimulator(topic.simulator)
 
   return (
     <div className="page-container">
@@ -105,12 +109,12 @@ export default function TopicPage() {
             <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
               <Icon name="eye" className="w-4 h-4 text-cyan-400" /> Visual explanation
             </h2>
-            {TopicVisual({ topic }) ? (
-              <TopicVisual topic={topic} />
+            {topicVisualRendered ? (
+              topicVisualRendered
             ) : (
               <ScientificDiagram title="Step-by-step" tone={tone === 'crimson' ? 'crimson' : 'cyan'}>
                 <div className="grid sm:grid-cols-2 gap-2">
-                  {(topic.process ?? []).slice(0, 4).map((p) => (
+                  {(topic.process ?? []).slice(0, PROCESS_STEPS_PREVIEW).map((p) => (
                     <div key={p.title} className="rounded-lg border border-navy-600/40 bg-navy-800 px-4 py-3">
                       <p className="text-sm font-semibold text-white">{p.title}</p>
                       <p className="text-xs text-gray-400 mt-1 leading-relaxed">{p.description}</p>
@@ -120,8 +124,6 @@ export default function TopicPage() {
               </ScientificDiagram>
             )}
           </section>
-
-          {topic.process && topic.process.length > 0 && TopicVisual({ topic }) === null ? null : null}
 
           {topic.process && topic.process.length > 0 && (
             <section aria-label="Step-by-step process">
@@ -168,7 +170,7 @@ export default function TopicPage() {
             </section>
           )}
 
-          {simulatorLink && (
+          {simulator && (
             <section aria-label="Simulator">
               <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-600/10 to-transparent p-5">
                 <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
@@ -176,9 +178,9 @@ export default function TopicPage() {
                 </h2>
                 <p className="text-sm text-gray-400 mb-4">
                   Put this concept into practice.{' '}
-                  {getSimulatorDesc(topic.simulator)}
+                  {simulator.blurb}
                 </p>
-                <Link to={simulatorLink} className="btn-primary">
+                <Link to={simulator.path} className="btn-primary">
                   Open simulator
                   <Icon name="arrow-right" className="w-4 h-4" />
                 </Link>
@@ -225,24 +227,7 @@ export default function TopicPage() {
             </div>
           )}
 
-          <div className="glass-panel p-5">
-            <h2 className="text-sm font-bold mb-3">In this module</h2>
-            <HorizontalFlow>
-              {[
-                { label: 'Definition', ok: true },
-                { label: 'Why it matters', ok: true },
-                { label: 'Visual', ok: !!TopicVisual({ topic }) },
-                { label: 'Process', ok: (topic.process?.length ?? 0) > 0 },
-                { label: 'Limits', ok: (topic.limitations?.length ?? 0) > 0 },
-                { label: 'Quiz', ok: (topic.quiz?.length ?? 0) > 0 },
-              ].map((c) => (
-                <span key={c.label} className="flex items-baseline gap-1.5 text-xs text-gray-400">
-                  <Icon name={c.ok ? 'check' : 'info'} className={`w-3 h-3 ${c.ok ? 'text-emerald-400' : 'text-gray-500'}`} />
-                  {c.label}
-                </span>
-              ))}
-            </HorizontalFlow>
-          </div>
+          <ModuleChecklist topic={topic} hasVisual={!!topicVisualRendered} />
 
           <InfoBlock title="Scientific habit" tone="amber">
             Every module ends with the same reminder: state what the data support, then stop there.
@@ -253,16 +238,30 @@ export default function TopicPage() {
   )
 }
 
-function getSimulatorLink(topic: { simulator?: string }): string | null {
-  if (!topic.simulator) return null
-  const all = getAllSimulators()
-  const match = all.find((s) => s.id === topic.simulator)
-  return match ? match.path : null
+function getSimulator(simulatorId?: string) {
+  if (!simulatorId) return null
+  return getAllSimulators().find((s) => s.id === simulatorId) ?? null
 }
 
-function getSimulatorDesc(simulatorId?: string): string {
-  if (!simulatorId) return ''
-  const all = getAllSimulators()
-  const match = all.find((s) => s.id === simulatorId)
-  return match ? match.blurb : ''
+function ModuleChecklist({ topic, hasVisual }: { topic: Topic; hasVisual: boolean }) {
+  return (
+    <div className="glass-panel p-5">
+      <h2 className="text-sm font-bold mb-3">In this module</h2>
+      <HorizontalFlow>
+        {[
+          { label: 'Definition', ok: true },
+          { label: 'Why it matters', ok: true },
+          { label: 'Visual', ok: hasVisual },
+          { label: 'Process', ok: (topic.process?.length ?? 0) > 0 },
+          { label: 'Limits', ok: (topic.limitations?.length ?? 0) > 0 },
+          { label: 'Quiz', ok: (topic.quiz?.length ?? 0) > 0 },
+        ].map((c) => (
+          <span key={c.label} className="flex items-baseline gap-1.5 text-xs text-gray-400">
+            <Icon name={c.ok ? 'check' : 'info'} className={`w-3 h-3 ${c.ok ? 'text-emerald-400' : 'text-gray-500'}`} />
+            {c.label}
+          </span>
+        ))}
+      </HorizontalFlow>
+    </div>
+  )
 }

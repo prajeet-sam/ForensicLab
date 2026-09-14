@@ -4,13 +4,16 @@ import { PageHeader, ProgressBar, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { LaboratoryWorkflow } from '../components/LaboratoryWorkflow'
 import { ProcessTimeline } from '../components/display'
+import type { LabEvidenceItem } from '../lib/types'
 
-const statusTone: Record<string, string> = {
-  Received: 'text-gray-400 border-navy-500/50',
-  'Under Examination': 'text-amber-400 border-amber-500/40',
-  'QC Review': 'text-cyan-400 border-cyan-500/40',
-  Completed: 'text-emerald-400 border-emerald-500/40',
+const statusTone: Record<LabEvidenceItem['status'], { text: string; dot: string }> = {
+  Received: { text: 'text-gray-400 border-navy-500/50', dot: 'bg-gray-400' },
+  'Under Examination': { text: 'text-amber-400 border-amber-500/40', dot: 'bg-amber-400' },
+  'QC Review': { text: 'text-cyan-400 border-cyan-500/40', dot: 'bg-cyan-400' },
+  Completed: { text: 'text-emerald-400 border-emerald-500/40', dot: 'bg-emerald-400' },
 }
+
+const CASE_PROGRESS = 42
 
 export default function LaboratoryPage() {
   useSEO({
@@ -44,7 +47,7 @@ export default function LaboratoryPage() {
         </div>
 
         <div className="mt-5">
-          <ProgressBar value={42} label="Case progress" tone="cyan" />
+          <ProgressBar value={CASE_PROGRESS} label="Case progress" tone="cyan" />
         </div>
 
         {/* Evidence register */}
@@ -72,10 +75,8 @@ export default function LaboratoryPage() {
                     </span>
                   </td>
                   <td className="py-2.5">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded-full border ${statusTone[ev.status]}`}>
-                      <span className={`h-1 w-1 rounded-full ${
-                        ev.status === 'Received' ? 'bg-gray-400' : ev.status === 'Under Examination' ? 'bg-amber-400' : ev.status === 'QC Review' ? 'bg-cyan-400' : 'bg-emerald-400'
-                      }`} />
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded-full border ${statusTone[ev.status].text}`}>
+                      <span className={`h-1 w-1 rounded-full ${statusTone[ev.status].dot}`} />
                       {ev.status}
                     </span>
                   </td>

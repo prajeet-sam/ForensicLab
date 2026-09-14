@@ -435,7 +435,3 @@ export function Icon({
     </svg>
   )
 }
-
-export function iconNames() {
-  return Object.keys(paths) as IconName[]
-}

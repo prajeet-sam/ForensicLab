@@ -3,7 +3,7 @@ import { useSEO } from '../lib/seo'
 import { PageHeader, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
 
-const corrections = [
+const scientificCorrections = [
   {
     title: 'Serum is not plasma',
     body: 'Plasma is blood without the cells but with clotting factors. Serum is plasma from which the clotting factors have been removed after clotting. The two are not interchangeable — the notes say serum, the plates say plasma. This platform stays precise.',
@@ -42,7 +42,7 @@ const corrections = [
   },
 ]
 
-const corrections2 = [
+const teachingStandards = [
   {
     title: 'Analyse before interpret',
     body: 'Establish what the item is, then decide what that means. The two steps are logged separately and kept apart.',
@@ -59,6 +59,13 @@ const corrections2 = [
     title: 'Context counts',
     body: 'A stain, a fiber, a phone record — each contributes. Their combined probative value depends on context, and context is always stated in the report.',
   },
+]
+
+const methodSteps = [
+  { t: 'Learn', d: 'Every topic: definition → why it matters → core principle → visual → process → example → limits → check.' },
+  { t: 'Simulate', d: 'Real logic reproduced visually — agglutination, diffusion, screening chemistry — with the honest limits kept in view.' },
+  { t: 'Investigate', d: 'Evidence workflows and chain-of-custody games train the discipline of documentation.' },
+  { t: 'Interpret', d: 'Case files score your conclusions against what the evidence can actually support.' },
 ]
 
 export default function AboutPage() {
@@ -80,12 +87,7 @@ export default function AboutPage() {
           <Icon name="principles" className="w-4 h-4 text-cyan-400" /> Pedagogical method
         </h2>
         <div className="grid md:grid-cols-2 gap-3 mb-8">
-          {[
-            { t: 'Learn', d: 'Every topic: definition → why it matters → core principle → visual → process → example → limits → check.' },
-            { t: 'Simulate', d: 'Real logic reproduced visually — agglutination, diffusion, screening chemistry — with the honest limits kept in view.' },
-            { t: 'Investigate', d: 'Evidence workflows and chain-of-custody games train the discipline of documentation.' },
-            { t: 'Interpret', d: 'Case files score your conclusions against what the evidence can actually support.' },
-          ].map((m) => (
+          {methodSteps.map((m) => (
             <div key={m.t} className="glass-panel p-5">
               <p className="font-mono text-xs uppercase tracking-widest text-cyan-400 mb-1.5">{m.t}</p>
               <p className="text-sm text-gray-300 leading-relaxed">{m.d}</p>
@@ -104,29 +106,12 @@ export default function AboutPage() {
           The original classroom notes contained several common inaccuracies. Where the science says otherwise, this
           platform follows the science:
         </p>
-        <div className="space-y-3">
-          {corrections.map((c) => (
-            <div key={c.title} className="glass-panel p-5">
-              <h3 className="font-bold text-white mb-1.5 flex items-center gap-2">
-                <Icon name="check" className="w-4 h-4 text-emerald-400 shrink-0" />
-                {c.title}
-              </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">{c.body}</p>
-            </div>
-          ))}
-        </div>
+        <PrincipleCardList items={scientificCorrections} className="space-y-3" showCheck />
       </section>
 
       <section className="mb-12">
         <h2 className="text-xl font-bold tracking-tight mb-4">The standards we hold</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {corrections2.map((c) => (
-            <div key={c.title} className="glass-panel p-5">
-              <h3 className="font-bold text-white mb-1.5">{c.title}</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">{c.body}</p>
-            </div>
-          ))}
-        </div>
+        <PrincipleCardList items={teachingStandards} className="grid sm:grid-cols-2 gap-3" />
       </section>
 
       <section className="mb-12">
@@ -161,6 +146,30 @@ export default function AboutPage() {
           Read the principles
         </Link>
       </div>
+    </div>
+  )
+}
+
+function PrincipleCardList({
+  items,
+  className,
+  showCheck = false,
+}: {
+  items: { title: string; body: string }[]
+  className: string
+  showCheck?: boolean
+}) {
+  return (
+    <div className={className}>
+      {items.map((item) => (
+        <div key={item.title} className="glass-panel p-5">
+          <h3 className={`font-bold text-white mb-1.5${showCheck ? ' flex items-center gap-2' : ''}`}>
+            {showCheck && <Icon name="check" className="w-4 h-4 text-emerald-400 shrink-0" />}
+            {item.title}
+          </h3>
+          <p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
+        </div>
+      ))}
     </div>
   )
 }

@@ -1,35 +1,43 @@
+const MATCH_WEIGHTS = {
+  exact: 100,
+  prefix: 60,
+  subtitle: 30,
+  body: 10,
+  token: 5,
+} as const
+
 export interface SearchIndexItem {
   id: string
   title: string
   description: string
   kind: 'topic' | 'discipline' | 'principle' | 'glossary' | 'case' | 'simulator' | 'module' | 'page'
   url: string
-  _hay?: string
+  searchableText?: string
 }
 
 export function buildSearchIndex(items: SearchIndexItem[]): () => SearchIndexItem[] {
   const normalized = items.map((item) => ({
     ...item,
-    _hay: `${item.title} ${item.description}`.toLowerCase(),
+    searchableText: `${item.title} ${item.description}`.toLowerCase(),
   }))
   return () => normalized
 }
 
 export function runSearch(index: SearchIndexItem[], query: string): SearchIndexItem[] {
-  const q = query.trim().toLowerCase()
-  if (!q) return []
+  const needle = query.trim().toLowerCase()
+  if (!needle) return []
   const scored = index
     .map((item) => {
-      const hay = item._hay ?? `${item.title} ${item.description}`.toLowerCase()
+      const hay = item.searchableText ?? `${item.title} ${item.description}`.toLowerCase()
       let score = 0
-      if (item.title.toLowerCase() === q) score += 100
-      if (item.title.toLowerCase().startsWith(q)) score += 60
-      if (item.title.toLowerCase().includes(q)) score += 30
-      if (hay.includes(q)) score += 10
+      if (item.title.toLowerCase() === needle) score += MATCH_WEIGHTS.exact
+      if (item.title.toLowerCase().startsWith(needle)) score += MATCH_WEIGHTS.prefix
+      if (item.title.toLowerCase().includes(needle)) score += MATCH_WEIGHTS.subtitle
+      if (hay.includes(needle)) score += MATCH_WEIGHTS.body
       // boost title token matches
-      const tokens = q.split(/\s+/)
+      const tokens = needle.split(/\s+/)
       for (const t of tokens) {
-        if (item.title.toLowerCase().includes(t)) score += 5
+        if (item.title.toLowerCase().includes(t)) score += MATCH_WEIGHTS.token
       }
       return { item, score }
     })

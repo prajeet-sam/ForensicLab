@@ -3,23 +3,7 @@ import { useSEO } from '../lib/seo'
 import { principles, fundamentalForensicPrinciples } from '../data/principles'
 import { PageHeader, DefinitionStrip, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
-import { PrincipleCard, ScientificDiagram, FlowBox, FlowArrow, HorizontalFlow } from '../components/display'
-
-const principleVisuals: Record<string, { title: string; body: string }[]> = {
-  locard: [
-    { title: 'Person ↔ Environment', body: 'A person leaves material at the scene; the scene deposits material on the person. It goes both ways.' },
-    { title: 'Possible transfer', body: 'Hairs, fibers, soil, glass, biological fluids — any of these can move.' },
-  ],
-  individuality: [
-    { title: 'Source level vs class level', body: 'A shared class characteristic narrows the field. A unique detail narrows it to one — but only with strong evidence.' },
-  ],
-  progressive: [
-    { title: 'Change is constant', body: 'Blood dries, DNA degrades, electronic files overwrite. Interpret the evidence as it is now — not as it was.' },
-  ],
-  comparison: [
-    { title: 'Questioned ↔ Known', body: 'Two items compared side by side — same conditions, same instruments. The principle asks: could they share a source?' },
-  ],
-}
+import { PrincipleCard, ScientificDiagram, FlowBox, FlowArrow } from '../components/display'
 
 export default function PrinciplesPage() {
   useSEO({

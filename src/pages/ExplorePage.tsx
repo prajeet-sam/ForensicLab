@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { Icon } from '../components/Icon'
@@ -66,6 +67,19 @@ function DisciplineTile({ id, name, blurb, icon }: { id: string; name: string; b
   )
 }
 
+function SectionList({ sections }: { sections: { title: string; body: ReactNode }[] }) {
+  return (
+    <>
+      {sections.map((s) => (
+        <section key={s.title}>
+          <h2 className="text-lg font-bold mb-3">{s.title}</h2>
+          {s.body}
+        </section>
+      ))}
+    </>
+  )
+}
+
 export function DisciplinePage() {
   const { disciplineId } = useParams<{ disciplineId: string }>()
   const discipline = getDiscipline(disciplineId ?? '')
@@ -106,50 +120,59 @@ export function DisciplinePage() {
 
       <div className="grid lg:grid-cols-6 gap-6">
         <div className="lg:col-span-4 space-y-6">
-          <section>
-            <h2 className="text-lg font-bold mb-3">What it studies</h2>
-            <ul className="grid gap-2">
-              {discipline.studies.map((s) => (
-                <li key={s} className="glass-panel px-4 py-3 text-sm text-gray-200">{s}</li>
-              ))}
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold mb-3">Evidence examples</h2>
-            <div className="grid sm:grid-cols-2 gap-2">
-              {discipline.evidenceExamples.map((e) => (
-                <div key={e} className="flex items-center gap-2.5 glass-panel px-3.5 py-3">
-                  <EvidenceTag label="EVI" />
-                  <span className="text-sm text-gray-300">{e}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold mb-3">Common methods</h2>
-            <ul className="grid sm:grid-cols-2 gap-2">
-              {discipline.methods.map((m) => (
-                <li key={m} className="flex items-start gap-2 text-sm text-gray-300 glass-panel px-4 py-3">
-                  <Icon name="check" className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold mb-3">Forensic applications</h2>
-            <ul className="space-y-2">
-              {discipline.applications.map((a) => (
-                <li key={a} className="flex items-start gap-2 text-sm text-gray-300">
-                  <Icon name="arrow-right" className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <SectionList
+            sections={[
+              {
+                title: 'What it studies',
+                body: (
+                  <ul className="grid gap-2">
+                    {discipline.studies.map((s) => (
+                      <li key={s} className="glass-panel px-4 py-3 text-sm text-gray-200">{s}</li>
+                    ))}
+                  </ul>
+                ),
+              },
+              {
+                title: 'Evidence examples',
+                body: (
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {discipline.evidenceExamples.map((e) => (
+                      <div key={e} className="flex items-center gap-2.5 glass-panel px-3.5 py-3">
+                        <EvidenceTag label="EVI" />
+                        <span className="text-sm text-gray-300">{e}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                title: 'Common methods',
+                body: (
+                  <ul className="grid sm:grid-cols-2 gap-2">
+                    {discipline.methods.map((m) => (
+                      <li key={m} className="flex items-start gap-2 text-sm text-gray-300 glass-panel px-4 py-3">
+                        <Icon name="check" className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                        {m}
+                      </li>
+                    ))}
+                  </ul>
+                ),
+              },
+              {
+                title: 'Forensic applications',
+                body: (
+                  <ul className="space-y-2">
+                    {discipline.applications.map((a) => (
+                      <li key={a} className="flex items-start gap-2 text-sm text-gray-300">
+                        <Icon name="arrow-right" className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                ),
+              },
+            ]}
+          />
         </div>
 
         <aside className="lg:col-span-2 space-y-4">
