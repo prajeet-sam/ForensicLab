@@ -91,8 +91,8 @@ Don't just read the science — run it. Ten simulators, built to teach a concept
 
 ## Tech
 
-- **React 18** with TypeScript and `react-router` v6
-- **Vite** 5 for an instant dev loop
+- **React 18** with TypeScript and `react-router` v7
+- **Vite** 8 for an instant dev loop
 - **Tailwind CSS** 3 with a custom **pink-and-black** palette — near-black `navy` surfaces with a pink undercurrent, `pink` accents and `rose` for alerts
 - **Zero runtime dependencies beyond the framework** — all content lives in typed data files under `src/data`
 
@@ -130,6 +130,23 @@ src/
 - **Icons** are declared in a whitelist in `src/components/Icon.tsx` — add new icons there, not inline.
 - **Cross-linking is verified**: every topic, glossary term and discipline reference resolves to a real topic (an audit pass added six foundational topics to eliminate all dangling links).
 - **Educational scope** — every simulator is a teaching replica. It reproduces the *logic* of a laboratory test; nothing a simulator produces is a real forensic result and must never be used for casework.
+
+## Forensic-coded source conventions
+
+This codebase is written (and reviewed) like an evidence ledger, so the naming and the discipline reinforce each other:
+
+| Forensic idea | What it maps to here |
+| --- | --- |
+| Case file | A Git branch — `feat/`, `perf/`, `fix/`, `docs/` prefixes are the case *types* |
+| Chain-of-custody log | `CHANGELOG-SECURITY.md` / `CHANGELOG-SCALABILITY.md` — every change is a dated entry, nothing is anonymous |
+| Evidence exhibits | Typed content under `src/data/` — TypeScript is the tamper-evident seal; structural invariants fail the build rather than silently degrade |
+| Evidentiary findings | UI primitives in `src/components/forensic.tsx` (`ExhibitTag`, `CaseStampBar`, `ChainStatusDot`) plus `EvidenceCard` in `display.tsx` |
+| Contamination | A bug or regression; the changelogs record source, elimination, and the re-test that cleared it |
+| Control runs | `npm run build` (`tsc -b` + Vite) and deep-link smoke tests — a conclusion stands or falls on the controls that accompanied it |
+| Breaking the seal | Never commit secrets, never touch production, never merge without review — evidence that cannot be verified is worthless |
+| Analyst | The learner/self — simulators are stamped *"Analyst: Self (learner)"* because the person running the exercise is the one accountable for the interpretation |
+
+Rule of thumb: if a change cannot be described as a defensible entry in an evidence log, it does not land on this branch.
 
 ---
 

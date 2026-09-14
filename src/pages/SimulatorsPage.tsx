@@ -3,6 +3,7 @@ import { useSEO } from '../lib/seo'
 import { getAllSimulators } from '../data/simulators'
 import { PageHeader, InfoBlock } from '../components/ui'
 import { Icon } from '../components/Icon'
+import { ExhibitTag, ChainStatusDot } from '../components/forensic'
 import { isSimulatorCompleted } from '../lib/progress'
 
 export default function SimulatorsPage() {
@@ -51,6 +52,13 @@ export default function SimulatorsPage() {
                         <Icon name="check" className="w-3 h-3" /> completed
                       </span>
                     )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                    <ExhibitTag id={`0${i + 1}`} tone={s.tone} />
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-gray-500">
+                      Case no. FSL-SIM-2026-{String(i + 1).padStart(3, '0')}
+                    </span>
+                    <ChainStatusDot open={!done} />
                   </div>
                   <p className="text-sm text-gray-400 mt-1 leading-relaxed max-w-2xl">{s.blurb}</p>
                 </div>

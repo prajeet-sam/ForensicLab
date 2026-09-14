@@ -13,6 +13,7 @@ import { TimelineForgeSimulator } from '../components/TimelineForgeSimulator'
 import { WitnessBoxSimulator } from '../components/WitnessBoxSimulator'
 import { SceneExplorerSimulator } from '../components/SceneExplorerSimulator'
 import { InfoBlock } from '../components/ui'
+import { CaseStampBar } from '../components/forensic'
 import { isSimulatorCompleted } from '../lib/progress'
 import { useState } from 'react'
 
@@ -36,6 +37,7 @@ export default function SimulatorDetailPage() {
   }
 
   const done = isSimulatorCompleted(sim.id)
+  const caseNo = 'FSL-SIM-2026-' + String(getAllSimulators().findIndex((x) => x.id === sim.id) + 1).padStart(3, '0')
   const markDone = () => {
     if (!done) setRefresh((r) => r + 1)
   }
@@ -53,6 +55,16 @@ export default function SimulatorDetailPage() {
           )}
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{sim.title}</h1>
+        <CaseStampBar
+          state={{ open: !done }}
+          entries={[
+            { label: 'Case no', value: caseNo, tone: sim.tone },
+            { label: 'Exhibit', value: `EXH 0${getAllSimulators().findIndex((x) => x.id === sim.id) + 1}` },
+            { label: 'Bench', value: 'Interactive simulator' },
+            { label: 'Analyst', value: 'Self (learner)' },
+            { label: 'Class', value: 'Educational exercise' },
+          ]}
+        />
       </div>
 
       <SimulatorShell title={sim.title} definition={sim.blurb} tone={sim.tone}>
