@@ -29,7 +29,7 @@ Forty-nine topics track the real structure of a forensic syllabus, plus four sup
 | **Biology** | ABO & MN/ Rh grouping, antigen–antibody, agglutination, immunodiffusion, DNA profiling, dried stains |
 | **Chemistry** | Presumptive & confirmatory blood tests, forensic chemistry, toxicology centre |
 | **Trace & comparison** | Glass, paint, fibre, soil, toolmarks, impressions, footwear — the physics of contact |
-| **Laboratory & QA** | Evidence lifecycle, chain of custody, quality control, the laboratory as a system (created as part of the reference-integrity pass that made every cross-link resolvable) |
+| **Laboratory & QA** | Evidence lifecycle, chain of custody, quality control, the laboratory as a system (built so every cross-link resolves to a real topic) |
 | **Documents & prints** | Fingerprints, handwriting, questioned documents |
 | **Digital & AI** | Digital-media authentication, timeline reconstruction, AI decision support |
 
@@ -128,7 +128,7 @@ src/
 ## Contributing / notes
 
 - **Icons** are declared in a whitelist in `src/components/Icon.tsx` — add new icons there, not inline.
-- **Cross-linking is verified**: every topic, glossary term and discipline reference resolves to a real topic (an audit pass added six foundational topics to eliminate all dangling links).
+- **Cross-linking is verified**: every topic, glossary term and discipline reference resolves to a real topic (six foundational topics were added to eliminate all dangling links).
 - **Educational scope** — every simulator is a teaching replica. It reproduces the *logic* of a laboratory test; nothing a simulator produces is a real forensic result and must never be used for casework.
 
 ## Forensic-coded source conventions
@@ -138,10 +138,10 @@ This codebase is written (and reviewed) like an evidence ledger, so the naming a
 | Forensic idea | What it maps to here |
 | --- | --- |
 | Case file | A Git branch — `feat/`, `perf/`, `fix/`, `docs/` prefixes are the case *types* |
-| Chain-of-custody log | `CHANGELOG-SECURITY.md` / `CHANGELOG-SCALABILITY.md` — every change is a dated entry, nothing is anonymous |
+| Chain-of-custody log | A dated commit history — every change is traceable, nothing is anonymous |
 | Evidence exhibits | Typed content under `src/data/` — TypeScript is the tamper-evident seal; structural invariants fail the build rather than silently degrade |
 | Evidentiary findings | UI primitives in `src/components/forensic.tsx` (`ExhibitTag`, `CaseStampBar`, `ChainStatusDot`) plus `EvidenceCard` in `display.tsx` |
-| Contamination | A bug or regression; the changelogs record source, elimination, and the re-test that cleared it |
+| Contamination | A bug or regression; the commit history records its source, elimination, and the re-test that cleared it |
 | Control runs | `npm run build` (`tsc -b` + Vite) and deep-link smoke tests — a conclusion stands or falls on the controls that accompanied it |
 | Breaking the seal | Never commit secrets, never touch production, never merge without review — evidence that cannot be verified is worthless |
 | Analyst | The learner/self — simulators are stamped *"Analyst: Self (learner)"* because the person running the exercise is the one accountable for the interpretation |
