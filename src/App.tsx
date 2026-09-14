@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-
 import { Navbar, MobileBottomNav, Footer, MorePanel } from './components/shell'
 import { SearchOverlay } from './components/SearchOverlay'
 import { ParticleField } from './components/ParticleField'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import LearnPage from './pages/LearnPage'
 import TopicPage from './pages/TopicPage'
@@ -39,7 +40,9 @@ function AppLayout() {
       <Navbar onOpenSearch={() => setSearchOpen(true)} />
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <main className="flex-1 pb-20 lg:pb-0">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <MobileBottomNav onOpenSearch={() => setSearchOpen(true)} />
       <Footer />

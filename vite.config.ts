@@ -13,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/@sentry')) return 'sentry'
           if (
             id.includes('node_modules/react/index') ||
             id.includes('node_modules/react-dom') ||
