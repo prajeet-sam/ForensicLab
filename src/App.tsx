@@ -1,26 +1,31 @@
 import { useState } from 'react'
 import { useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { Navbar, MobileBottomNav, Footer, MorePanel } from './components/shell'
-import { SearchOverlay } from './components/SearchOverlay'
 import { ParticleField } from './components/ParticleField'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import HomePage from './pages/HomePage'
-import LearnPage from './pages/LearnPage'
-import TopicPage from './pages/TopicPage'
-import ExplorePage, { DisciplinePage } from './pages/ExplorePage'
-import PrinciplesPage from './pages/PrinciplesPage'
-import LaboratoryPage from './pages/LaboratoryPage'
-import SimulatorsPage from './pages/SimulatorsPage'
-import SimulatorDetailPage from './pages/SimulatorDetailPage'
-import CasesPage from './pages/CasesPage'
-import CasePage from './pages/CasePage'
-import QuizzesPage from './pages/QuizzesPage'
-import ExamPage from './pages/ExamPage'
-import GlossaryPage, { GlossaryTermPage } from './pages/GlossaryPage'
-import ModuleLibraryPage, { ModuleDetailPage } from './pages/ModuleLibraryPage'
-import AboutPage from './pages/AboutPage'
-import NotFoundPage from './pages/NotFoundPage'
+
+const SearchOverlay = lazy(() => import('./components/SearchOverlay').then((m) => ({ default: m.SearchOverlay })))
+const HomePage = lazy(() => import('./pages/HomePage'))
+const LearnPage = lazy(() => import('./pages/LearnPage'))
+const TopicPage = lazy(() => import('./pages/TopicPage'))
+const ExplorePage = lazy(() => import('./pages/ExplorePage'))
+const DisciplinePage = lazy(() => import('./pages/ExplorePage').then((m) => ({ default: m.DisciplinePage })))
+const PrinciplesPage = lazy(() => import('./pages/PrinciplesPage'))
+const LaboratoryPage = lazy(() => import('./pages/LaboratoryPage'))
+const SimulatorsPage = lazy(() => import('./pages/SimulatorsPage'))
+const SimulatorDetailPage = lazy(() => import('./pages/SimulatorDetailPage'))
+const CasesPage = lazy(() => import('./pages/CasesPage'))
+const CasePage = lazy(() => import('./pages/CasePage'))
+const QuizzesPage = lazy(() => import('./pages/QuizzesPage'))
+const ExamPage = lazy(() => import('./pages/ExamPage'))
+const GlossaryPage = lazy(() => import('./pages/GlossaryPage'))
+const GlossaryTermPage = lazy(() => import('./pages/GlossaryPage').then((m) => ({ default: m.GlossaryTermPage })))
+const ModuleLibraryPage = lazy(() => import('./pages/ModuleLibraryPage'))
+const ModuleDetailPage = lazy(() => import('./pages/ModuleLibraryPage').then((m) => ({ default: m.ModuleDetailPage })))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -28,6 +33,17 @@ function ScrollToTop() {
     if (typeof window !== 'undefined') window.scrollTo(0, 0)
   }, [pathname])
   return null
+}
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="glass-panel flex items-center gap-3 px-6 py-4">
+        <span className="h-3 w-3 animate-pulse rounded-full bg-cyan-400" />
+        <span className="text-sm text-gray-400">Loading…</span>
+      </div>
+    </div>
+  )
 }
 
 function AppLayout() {
@@ -38,10 +54,16 @@ function AppLayout() {
       <ParticleField />
       <ScrollToTop />
       <Navbar onOpenSearch={() => setSearchOpen(true)} />
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {searchOpen && (
+        <Suspense fallback={null}>
+          <SearchOverlay open onClose={() => setSearchOpen(false)} />
+        </Suspense>
+      )}
       <main className="flex-1 pb-20 lg:pb-0">
         <ErrorBoundary>
-          <Outlet />
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </ErrorBoundary>
       </main>
       <MobileBottomNav onOpenSearch={() => setSearchOpen(true)} />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from './Icon'
 import { buildSearchIndex, runSearch } from '../lib/search'
@@ -10,9 +10,11 @@ import { glossary } from '../data/glossary'
 import { cases } from '../data/cases'
 import { moduleNotes } from '../data/modules'
 
-function useGlobalIndex() {
-  return useMemo<SearchIndexItem[]>(() => {
-    const items: SearchIndexItem[] = [
+let cachedIndex: SearchIndexItem[] | null = null
+
+function getGlobalIndex(): SearchIndexItem[] {
+  if (cachedIndex) return cachedIndex
+  const items: SearchIndexItem[] = [
       ...topics.map((t) => ({
         id: t.id,
         title: t.title,
@@ -110,8 +112,8 @@ function useGlobalIndex() {
       { id: 'pg-modules', title: 'Module Library', description: 'Full lecture notes for all modules', kind: 'page' as const, url: '/modules' },
       { id: 'pg-about', title: 'About & Methodology', description: 'How this platform teaches forensic science', kind: 'page' as const, url: '/about' },
     ]
-    return buildSearchIndex(items)()
-  }, [])
+    cachedIndex = buildSearchIndex(items)()
+    return cachedIndex
 }
 
 const kindStyles: Record<SearchIndexItem['kind'], { label: string; cls: string }> = {
@@ -134,7 +136,7 @@ export function SearchOverlay({
   onClose: () => void
   initialQuery?: string
 }) {
-  const index = useGlobalIndex()
+  const index = getGlobalIndex()
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const results = query.trim() ? runSearch(index, query).slice(0, 12) : []
