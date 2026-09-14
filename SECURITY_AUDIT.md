@@ -51,23 +51,25 @@ Severity scale: **Critical / High / Medium / Low / Info**.
 
 | ID | Sev | Type | Finding | Evidence |
 |----|-----|------|---------|----------|
-| F1 | **High (dev-only)** | Vulnerable component | `vite@5.4.21` + `esbuild@<=0.24.2`: path-traversal in optimized-deps `.map` handling (GHSA-4w7w-66w2-5vf9), Windows `server.fs.deny` bypass (GHSA-fx2h-pf6j-xcff, CVSS 7.5), launch-editor NTLMv2 disclosure (GHSA-v6wh-96g9-6wx3), and dev-server request exfil (GHSA-67mh-4wv8-2f99). **Only affects `vite dev`/`preview`, not the static production bundle.** | `npm audit` |
-| F2 | **Medium** | Vulnerable component | `react-router-dom@6.30.6` ships vulnerable `react-router@^6` (CVE-2025-68470 bypass: open redirect via backslash in `Link`/`useNavigate`; GHSA-337j-9hxr-rhxg constructor injection via `deserializeErrors()`, SSR-hydration only). App **is in prod bundle** but uses only static internal paths and no SSR — exploitability currently low. Fix available only via major bump to `7.18.3`. | `npm audit` |
-| F3 | **Medium** | Misconfiguration | **No `.gitignore`.** Repo initialized but commit-less; `node_modules/`, `dist/`, `tsconfig.tsbuildinfo`, and a future `.env` would all be swept into an initial `git add .`. Supply-chain/secret hygiene risk. | `Test-Path .gitignore` = missing |
-| F4 | **Low** | Misconfiguration | No security headers / CSP / referrer policy anywhere; static host default only. No `<meta>` CSP in `index.html` head. Clickjacking/referrer-leak mitigation currently absent. | `index.html` head review |
+| F1 | ~~High (dev-only)~~ **FIXED** | Vulnerable component | `vite@5.4.21` + `esbuild@<=0.24.2`: path-traversal in optimized-deps `.map` handling (GHSA-4w7w-66w2-5vf9), Windows `server.fs.deny` bypass (GHSA-fx2h-pf6j-xcff, CVSS 7.5), launch-editor NTLMv2 disclosure (GHSA-v6wh-96g9-6wx3), and dev-server request exfil (GHSA-67mh-4wv8-2f99). **Only affects `vite dev`/`preview`, not the static production bundle.** | `npm audit` |
+| F2 | ~~Medium~~ **FIXED** | Vulnerable component | `react-router-dom@6.30.6` ships vulnerable `react-router@^6` (CVE-2025-68470 bypass: open redirect via backslash in `Link`/`useNavigate`; GHSA-337j-9hxr-rhxg constructor injection via `deserializeErrors()`, SSR-hydration only). App **is in prod bundle** but uses only static internal paths and no SSR — exploitability currently low. Fix available only via major bump to `7.18.3`. | `npm audit` |
+| F3 | ~~Medium~~ **FIXED** | Misconfiguration | **No `.gitignore`.** Repo initialized but commit-less; `node_modules/`, `dist/`, `tsconfig.tsbuildinfo`, and a future `.env` would all be swept into an initial `git add .`. Supply-chain/secret hygiene risk. | `Test-Path .gitignore` = missing |
+| F4 | ~~Low~~ **FIXED** | Misconfiguration | No security headers / CSP / referrer policy anywhere; static host default only. No `<meta>` CSP in `index.html` head. Clickjacking/referrer-leak mitigation currently absent. | `index.html` head review |
 
 Not raised: no CVEs affect the shipped bundle (F1 is build-time only); no secrets historically present; no XSS sinks; no outbound data flow. `npm audit` total: 4 advisories (0 critical, 1 high [dev-only], 3 moderate), 0 vulnerable prod-runtime packages beyond the router.
 
-## Remediation Plan (Phase 4 — pending go-ahead)
+## Remediation Plan (Phase 4 — applied, see CHANGELOG-SECURITY.md)
 
-| Fix | Change | Risk to app |
-|-----|--------|-------------|
-| R3 | Add `.gitignore` (`node_modules/`, `dist/`, `*.tsbuildinfo`, `.env*`, OS junk, local editor dirs) | None — config-only |
-| R2 | Upgrade `react-router-dom` → `7.18.3` (+ switch imports to `react-router` if v7 re-export requires it); verify all 73+ route files still build; smoke-test nav. Keep pinned in lockfile. | Low-medium — major bump, needs build + manual nav verification |
-| R1 | Upgrade `vite` → `8.x` (+ `@vitejs/plugin-react` compatible) to clear dev-only advisories; re-verify build, `manualChunks`, dev HMR | Low-medium — toolchain major bump; dev-only security benefit |
-| R4 | Add conservative `<meta>` CSP + referrer policy to `index.html`; validate against styles/HMR; note hosting-header CSP as the production-grade follow-up | Low — meta CSP is a defense-in-depth fallback; must not break Tailwind inline-style usage |
+| Fix | Change | Status |
+|-----|--------|--------|
+| R3 | Add `.gitignore` (`node_modules/`, `dist/`, `*.tsbuildinfo`, `.env*`, OS junk) | ✅ Applied (baseline commit `eaf36f5`) |
+| R2 | Upgrade `react-router-dom` → `7.18.3`; declarative mode preserved; build + nav verified | ✅ Applied (`13c3a8d`) |
+| R1 | Upgrade `vite` → `8.3.0` (`manualChunks` → function form, alias via `import.meta.url`); build verified | ✅ Applied (`24bcc00`) |
+| R4 | Add conservative `<meta>` CSP + referrer policy to `index.html` (`script-src 'self' 'unsafe-inline'`, `style-src 'self' 'unsafe-inline'`, `object-src 'none'`, `frame-ancestors 'none'`, …) | ✅ Applied (baseline commit `eaf36f5`) |
 
-Every fix: isolated, with `npm run build` verification after each. Production — none.
+Production — none.
+
+**Post-fix:** `npm audit` = **0 vulnerabilities**; `npm run build` green on Vite 8.3.0.
 
 ## Verification Plan (Phase 5)
 
