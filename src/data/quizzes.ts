@@ -1,0 +1,418 @@
+import type { QuizQuestion } from '../lib/types'
+
+export interface QuizModule {
+  id: string
+  title: string
+  description: string
+  category: string
+  questions: QuizQuestion[]
+}
+
+export const quizModules: QuizModule[] = [
+  {
+    id: 'forensic-foundations',
+    title: 'Foundations of Forensic Science',
+    description: 'Core principles, the role of science, and the limits of evidence.',
+    category: 'principles',
+    questions: [
+      {
+        id: 'ff-1',
+        type: 'mcq',
+        question: 'Which best describes the role of forensic science in a legal investigation?',
+        options: [
+          'To prove guilt',
+          'To provide objective scientific findings to assist the trier of fact',
+          'To replace the jury',
+          'To decide the verdict',
+        ],
+        answer: 'To provide objective scientific findings to assist the trier of fact',
+        explanation: 'Forensic science supplies evidence and interpretation. Decisions about guilt are the province of the court, not the scientist.',
+      },
+      {
+        id: 'ff-2',
+        type: 'tf',
+        question: 'A negative luminol result conclusively proves that no blood is present.',
+        answer: 'False',
+        explanation: 'Luminol is presumptive and has limits of detection. A negative result does not absolutely exclude the presence of blood.',
+      },
+      {
+        id: 'ff-3',
+        type: 'mcq',
+        question: 'Why is chain of custody maintained?',
+        options: [
+          'To make paperwork longer',
+          'To demonstrate evidence integrity from scene to court',
+          'To protect the analyst\u2019s identity',
+          'Because it looks official',
+        ],
+        answer: 'To demonstrate evidence integrity from scene to court',
+        explanation: 'Chain of custody shows the item was accounted for, unaltered and properly handled at every stage.',
+      },
+      {
+        id: 'ff-4',
+        type: 'mcq',
+        question: 'Which principle states that analysis and interpretation should be kept logically distinct?',
+        options: [
+          "Locard's Exchange Principle",
+          'Principle of Progressive Change',
+          'Analysis vs Interpretation distinction',
+          'Principle of Comparison',
+        ],
+        answer: 'Analysis vs Interpretation distinction',
+        explanation: 'Separating measurement from conclusion protects against overstating what the data really show.',
+      },
+      {
+        id: 'ff-5',
+        type: 'mcq',
+        question: 'Forensic conclusions are best described as:',
+        options: [
+          'Absolute certainties',
+          'Statements of probability or degree of support',
+          'Just opinions',
+          'Legal verdicts',
+        ],
+        answer: 'Statements of probability or degree of support',
+        explanation: 'Science reports strength of support — "very strong," "consistent with," "excluded" — not metaphysical certainty.',
+      },
+    ],
+  },
+  {
+    id: 'blood-serology',
+    title: 'Blood & Serology',
+    description: 'Blood grouping, antigen-antibody reactions, agglutination and serological methods.',
+    category: 'biology',
+    questions: [
+      {
+        id: 'bs-1',
+        type: 'mcq',
+        question: 'An antigen is best described as:',
+        options: [
+          'A protein that destroys bacteria',
+          'A molecular marker recognized by an antibody',
+          'A type of blood cell',
+          'An enzyme',
+        ],
+        answer: 'A molecular marker recognized by an antibody',
+        explanation: 'Antigens are structures — in ABO, carbohydrate — that antibodies recognize and bind to.',
+      },
+      {
+        id: 'bs-2',
+        type: 'mcq',
+        question: 'A person of blood group AB will have which plasma antibodies?',
+        options: [
+          'Anti-A only',
+          'Anti-B only',
+          'Neither anti-A nor anti-B',
+          'Both anti-A and anti-B',
+        ],
+        answer: 'Neither anti-A nor anti-B',
+        explanation: 'Group AB cells carry both antigens; producing anti-A or anti-B antibodies would cause self-attack.',
+      },
+      {
+        id: 'bs-3',
+        type: 'mcq',
+        question: 'Agglutination differs from precipitation because:',
+        options: [
+          'Agglutination uses soluble antigen',
+          'Agglutination is clumping of particulate antigens; precipitation is insolubilization of soluble complexes',
+          'They are the same thing',
+          'Precipitation involves red blood cells',
+        ],
+        answer: 'Agglutination is clumping of particulate antigens; precipitation is insolubilization of soluble complexes',
+        explanation: 'Agglutination requires particulate antigens (like RBCs); precipitation uses soluble ones (like serum proteins in gel).',
+      },
+      {
+        id: 'bs-4',
+        type: 'mcq',
+        question: 'In Ouchterlony double immunodiffusion, the visible white line that forms is called:',
+        options: [
+          'An agglutination endpoint',
+          'A precipitin line',
+          'A calibration line',
+          'A negative result',
+        ],
+        answer: 'A precipitin line',
+        explanation: 'The line forms where soluble antigen and antibody meet in optimal proportions and form insoluble complexes.',
+      },
+      {
+        id: 'bs-5',
+        type: 'mcq',
+        question: 'ABO antigens are chemically:',
+        options: [
+          'Proteins',
+          'Carbohydrate (glycan) structures',
+          'Lipids',
+          'Nucleic acids',
+        ],
+        answer: 'Carbohydrate (glycan) structures',
+        explanation: 'ABO antigens are carbohydrate residues attached to the RBC surface — their shape determines group identity.',
+      },
+      {
+        id: 'bs-6',
+        type: 'tf',
+        question: 'ABO blood grouping can uniquely identify a single person as the donor of a stain.',
+        answer: 'False',
+        explanation: 'ABO groups are shared by millions of people. Grouping may support inclusion or exclusion but cannot individualize.',
+      },
+      {
+        id: 'bs-7',
+        type: 'mcq',
+        question: 'Why is species determination required after a positive presumptive blood test?',
+        options: [
+          'Because luminol detects only human blood',
+          'Presumptive tests are not species-specific',
+          'Species determination is optional',
+          'DNA is not needed',
+        ],
+        answer: 'Presumptive tests are not species-specific',
+        explanation: 'A positive Kastle-Meyer can be caused by some plant peroxidases and household chemicals. Confirming "human" before DNA work saves resources.',
+      },
+      {
+        id: 'bs-8',
+        type: 'mcq',
+        question: 'The Kastle-Meyer test is based on:',
+        options: [
+          'DNA amplification',
+          'The pseudoperoxidase activity of heme oxidizing phenolphthalein',
+          'Antibody binding',
+          'Luminol chemiluminescence',
+        ],
+        answer: 'The pseudoperoxidase activity of heme oxidizing phenolphthalein',
+        explanation: 'Heme catalyzes the oxidation of reduced phenolphthalein to a pink form in the presence of hydrogen peroxide.',
+      },
+    ],
+  },
+  {
+    id: 'dna-profiling-module',
+    title: 'DNA Profiling',
+    description: 'STR profiling, interpretation and the limits of genetic evidence.',
+    category: 'biology',
+    questions: [
+      {
+        id: 'dp-1',
+        type: 'mcq',
+        question: 'STR stands for:',
+        options: [
+          'Single Transfer Repeats',
+          'Short Tandem Repeats',
+          'Structural Taxonomy Reference',
+          'Serology Type Reference',
+        ],
+        answer: 'Short Tandem Repeats',
+        explanation: 'STRs are repeated short sequences (2–6 bases) at specific loci; repeat number varies between people.',
+      },
+      {
+        id: 'dp-2',
+        type: 'mcq',
+        question: 'What does PCR do in the DNA profiling workflow?',
+        options: [
+          'Reads the DNA sequence directly',
+          'Amplifies specific DNA regions to increase detectable quantity',
+          'Measures the concentration of DNA',
+          'Cuts DNA into fragments',
+        ],
+        answer: 'Amplifies specific DNA regions to increase detectable quantity',
+        explanation: 'PCR multiplies targeted loci so a tiny sample can produce enough material for analysis.',
+      },
+      {
+        id: 'dp-3',
+        type: 'mcq',
+        question: 'A match probability of 1 in 10 billion means:',
+        options: [
+          'The suspect is definitely guilty',
+          'About 1 in 10 billion randomly chosen people would share this profile',
+          'The result is unreliable',
+          'The DNA is degraded',
+        ],
+        answer: 'About 1 in 10 billion randomly chosen people would share this profile',
+        explanation: 'The statistic estimates rarity in a population, not guilt. Context, activity and interpretation are separate steps.',
+      },
+      {
+        id: 'dp-4',
+        type: 'tf',
+        question: 'If DNA from a suspect is found on an exhibit, that necessarily means the suspect handled that item during the crime.',
+        answer: 'False',
+        explanation: 'DNA can be present through transfer, secondary transfer, lab contamination or pre-existing traces. Its presence supports contact but does not specify activity.',
+      },
+    ],
+  },
+  {
+    id: 'evidence-workflow',
+    title: 'Evidence Workflow & Laboratory',
+    description: 'Evidence life-cycle, chain of custody, quality control and calibration.',
+    category: 'laboratory',
+    questions: [
+      {
+        id: 'ew-1',
+        type: 'mcq',
+        question: 'Which is the best description of calibration in the forensic laboratory?',
+        options: [
+          'Dating evidence chronologically',
+          'Measuring instrument performance against known reference standards',
+          'Cleaning the instrument',
+          'Collecting samples',
+        ],
+        answer: 'Measuring instrument performance against known reference standards',
+        explanation: 'Calibration verifies that an instrument gives accurate readings compared to accepted reference materials.',
+      },
+      {
+        id: 'ew-2',
+        type: 'mcq',
+        question: 'What is NABL accreditation?',
+        options: [
+          'A type of blood test',
+          'An accreditation body that checks laboratories against ISO/IEC 17025',
+          'A quality control reagent',
+          'A weapon classification',
+        ],
+        answer: 'An accreditation body that checks laboratories against ISO/IEC 17025',
+        explanation: 'NABL accredits labs for technical and management competence. It certifies quality processes, not individual results.',
+      },
+      {
+        id: 'ew-3',
+        type: 'tf',
+        question: 'NABL accreditation guarantees that every individual result from the laboratory is correct.',
+        answer: 'False',
+        explanation: 'Accreditation certifies processes, training and quality management. It does not and cannot eliminate all analytical error.',
+      },
+      {
+        id: 'ew-4',
+        type: 'mcq',
+        question: 'Why are blanks and controls run alongside actual case work?',
+        options: [
+          'To fill time',
+          'To detect contamination, instrument error or batch problems',
+          'Because the law requires them',
+          'To create busywork',
+        ],
+        answer: 'To detect contamination, instrument error or batch problems',
+        explanation: 'Controls give a known answer in the same batch — if they fail, the batch results are invalidated and the problem is caught.',
+      },
+      {
+        id: 'ew-5',
+        type: 'mcq',
+        question: 'Which is the correct sequence in the forensic evidence life-cycle?',
+        options: [
+          'Collection → Recognition → Documentation',
+          'Recognition → Documentation → Collection → Packaging → Laboratory examination',
+          'Reporting → Collection → Analysis',
+          'Court → Chain of Custody → Recognition',
+        ],
+        answer: 'Recognition → Documentation → Collection → Packaging → Laboratory examination',
+        explanation: 'The correct sequence ensures evidence is found, recorded, recovered, protected and analyzed in a defensible order.',
+      },
+    ],
+  },
+  {
+    id: 'chemistry-tox',
+    title: 'Chemistry & Toxicology',
+    description: 'Drug analysis, toxicological interpretation and the limits of chemical testing.',
+    category: 'chemistry',
+    questions: [
+      {
+        id: 'ct-1',
+        type: 'mcq',
+        question: 'An immunoassay drug screen is best described as:',
+        options: [
+          'A confirmatory identification',
+          'A presumptive screen that indicates possible drug classes',
+          'A chromatographic separation',
+          'An individualizing test',
+        ],
+        answer: 'A presumptive screen that indicates possible drug classes',
+        explanation: 'Immunoassays use antibody binding to detect classes of drugs — they are fast but prone to cross-reactivity.',
+      },
+      {
+        id: 'ct-2',
+        type: 'mcq',
+        question: 'Why is GC-MS or LC-MS required after a positive immunoassay?',
+        options: [
+          'Because the immunoassay is always correct',
+          'To confirm identity and quantify, as immunoassays can cross-react',
+          'Because immunoassays never produce results',
+          'Because DNA analysis is required',
+        ],
+        answer: 'To confirm identity and quantify, as immunoassays can cross-react',
+        explanation: 'Mass spectrometry separates molecules by mass and fragmentation, providing a chemical fingerprint.',
+      },
+      {
+        id: 'ct-3',
+        type: 'tf',
+        question: 'A positive toxicology result always means the substance caused the death or impairment.',
+        answer: 'False',
+        explanation: 'Presence of a drug must be interpreted with concentration, tolerance, metabolism, timing and post-mortem factors. Presence alone is not proof of causation.',
+      },
+      {
+        id: 'ct-4',
+        type: 'mcq',
+        question: 'Post-mortem redistribution refers to:',
+        options: [
+          'A change in body temperature',
+          'Movement of drugs between tissues after death, altering sample concentrations',
+          'DNA degradation in decomposed tissues',
+          'Blood group changes',
+        ],
+        answer: 'Movement of drugs between tissues after death, altering sample concentrations',
+        explanation: 'After death, membranes break down and drugs diffuse between compartments, making interpretation harder.',
+      },
+    ],
+  },
+  {
+    id: 'physics-comparison',
+    title: 'Physical Comparison Evidence',
+    description: 'Glass, paint, soil, toolmarks and the principle of comparison.',
+    category: 'physics',
+    questions: [
+      {
+        id: 'pc-1',
+        type: 'mcq',
+        question: 'Glass comparison testing typically involves:',
+        options: [
+          'Measuring blood content',
+          'Refractive index measurement and elemental analysis',
+          'DNA profiling of glass',
+          'Carbon dating',
+        ],
+        answer: 'Refractive index measurement and elemental analysis',
+        explanation: 'RI and SEM-EDS elemental analysis are the standard comparison tools for forensic glass evidence.',
+      },
+      {
+        id: 'pc-2',
+        type: 'mcq',
+        question: 'The principle of comparison asks:',
+        options: [
+          'Why did the crime happen?',
+          'Could the questioned evidence and known evidence share a common source?',
+          'Who committed the crime?',
+          'When did the evidence originate?',
+        ],
+        answer: 'Could the questioned evidence and known evidence share a common source?',
+        explanation: 'Comparison establishes exclusion or possible common source — it does not name the person who created the evidence.',
+      },
+      {
+        id: 'pc-3',
+        type: 'tf',
+        question: 'A class-level match in paint analysis conclusively identifies the vehicle that left a chip.',
+        answer: 'False',
+        explanation: 'Many vehicles use the same paint system. A class match shows consistency but does not uniquely identify the vehicle.',
+      },
+      {
+        id: 'pc-4',
+        type: 'mcq',
+        question: 'Refractive index (RI) of glass is measured by:',
+        options: [
+          'Touching it to a reagent',
+          'Observing the temperature at which glass particles become visible when immersed in an oil with a temperature gradient',
+          'Counting fingerprints on it',
+          'Measuring its weight',
+        ],
+        answer: 'Observing the temperature at which glass particles become visible when immersed in an oil with a temperature gradient',
+        explanation: 'The glass bead method uses an oil with a known RI gradient; the temperature at which the glass vanishes indicates its RI.',
+      },
+    ],
+  },
+]
+
+export function getQuiz(id: string): QuizModule | undefined {
+  return quizModules.find((q) => q.id === id)
+}
