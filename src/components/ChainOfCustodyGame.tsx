@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { chainOfCustodySteps } from '../data/lab'
 import { Icon } from './Icon'
 import { completeSimulator } from '../lib/progress'
 import { BenchPanel, EvidenceEnvelope, StatusLed, nowLocalInput, formatReadable } from './bench'
+import { FeedbackBanner, FormField } from './form'
 
 interface TransferRecord {
   seq: string
@@ -18,7 +18,9 @@ interface TransferRecord {
   signedAt: string
 }
 
-const stationCode = (location: string) => {
+const CASE_REF = 'FSL/26-1044'
+
+const stationCodeOf = (location: string) => {
   const map: Record<string, string> = {
     'Crime Scene': 'CS-01',
     Investigator: 'INV-01',
@@ -47,7 +49,7 @@ const reasonOptions = [
 export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
   const [step, setStep] = useState(0)
   const [records, setRecords] = useState<TransferRecord[]>([])
-  const [form, setForm] = useState({
+  const [transferForm, setTransferForm] = useState({
     handler: '',
     datetime: nowLocalInput(),
     reason: reasonOptions[0],
@@ -58,18 +60,18 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'fail'; msg: string } | null>(null)
   const [finished, setFinished] = useState(false)
 
-  const fromNode = chainOfCustodySteps[step].location
-  const toNode = chainOfCustodySteps[step + 1]?.location ?? null
+  const fromStation = chainOfCustodySteps[step].location
+  const toStation = chainOfCustodySteps[step + 1]?.location ?? null
   const isLast = step === chainOfCustodySteps.length - 1
 
   const validate = () => {
     const missing: string[] = []
-    if (!form.handler.trim()) missing.push('handler identity')
-    if (!form.datetime.trim()) missing.push('date & time')
-    if (!form.reason.trim()) missing.push('reason for transfer')
-    if (!form.condition.trim()) missing.push('condition of exhibit')
-    if (!form.seal.trim()) missing.push('seal number')
-    if (!form.signed) missing.push('authorised signature')
+    if (!transferForm.handler.trim()) missing.push('handler identity')
+    if (!transferForm.datetime.trim()) missing.push('date & time')
+    if (!transferForm.reason.trim()) missing.push('reason for transfer')
+    if (!transferForm.condition.trim()) missing.push('condition of exhibit')
+    if (!transferForm.seal.trim()) missing.push('seal number')
+    if (!transferForm.signed) missing.push('authorised signature')
     return missing
   }
 
@@ -80,29 +82,29 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
       const holder = prev ? prev.handler : 'the scene officer'
       setFeedback({
         type: 'fail',
-        msg: `Transfer ${String(step + 1).padStart(2, '0')} declared incomplete: ${missing.join(', ')}. ${holder} cannot release exhibit ${'FSL/26-1044'}–A to the next custody point without a complete record — continuity is broken and the finding later risks being ruled inadmissible.`,
+        msg: `Transfer ${String(step + 1).padStart(2, '0')} declared incomplete: ${missing.join(', ')}. ${holder} cannot release exhibit ${CASE_REF}–A to the next custody point without a complete record — continuity is broken and the finding later risks being ruled inadmissible.`,
       })
       return
     }
     const record: TransferRecord = {
       seq: String(records.length + 1).padStart(2, '0'),
-      datetime: form.datetime,
-      from: fromNode,
-      to: toNode ?? 'Court',
-      handler: form.handler.trim(),
-      seal: form.seal.trim().toUpperCase(),
-      reason: form.reason,
-      condition: form.condition,
-      signedBy: form.handler.trim(),
+      datetime: transferForm.datetime,
+      from: fromStation,
+      to: toStation ?? 'Court',
+      handler: transferForm.handler.trim(),
+      seal: transferForm.seal.trim().toUpperCase(),
+      reason: transferForm.reason,
+      condition: transferForm.condition,
+      signedBy: transferForm.handler.trim(),
       signedAt: nowLocalInput(),
     }
     const nextRecords = [...records, record]
     setRecords(nextRecords)
     setFeedback({
       type: 'ok',
-      msg: `Transfer ${record.seq} recorded. ${fromNode} → ${toNode ?? 'Court'} · seal ${record.seal} · signed ${record.signedBy} at ${formatReadable(record.signedAt)}.`,
+      msg: `Transfer ${record.seq} recorded. ${fromStation} → ${toStation ?? 'Court'} · seal ${record.seal} · signed ${record.signedBy} at ${formatReadable(record.signedAt)}.`,
     })
-    setForm({ handler: '', datetime: nowLocalInput(), reason: reasonOptions[0], condition: conditionOptions[0], seal: '', signed: false })
+    setTransferForm({ handler: '', datetime: nowLocalInput(), reason: reasonOptions[0], condition: conditionOptions[0], seal: '', signed: false })
     if (isLast) {
       setFinished(true)
       completeSimulator('chain-of-custody')
@@ -115,7 +117,7 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
   const resetGame = () => {
     setStep(0)
     setRecords([])
-    setForm({ handler: '', datetime: nowLocalInput(), reason: reasonOptions[0], condition: conditionOptions[0], seal: '', signed: false })
+    setTransferForm({ handler: '', datetime: nowLocalInput(), reason: reasonOptions[0], condition: conditionOptions[0], seal: '', signed: false })
     setFeedback(null)
     setFinished(false)
   }
@@ -128,7 +130,7 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
       <div className="glass-panel p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-1">Case · {''} Investigative case record</p>
-          <p className="font-mono text-cyan-400 font-bold">ICD/26/184 · FSL/26-1044</p>
+          <p className="font-mono text-cyan-400 font-bold">ICD/26/184 · {CASE_REF}</p>
           <p className="text-xs text-gray-400 mt-0.5">Exhibit A — bloodstained swab (door jamb). Prior acquis: burglary.</p>
         </div>
         <div className="text-right">
@@ -164,7 +166,7 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${reached && !isCurrent ? 'bg-emerald-400' : isCurrent ? 'bg-amber-400 animate-pulse-slow' : 'bg-navy-500'}`} />
-                  <span className="text-[9px] text-gray-500">{stationCode(node.location)}</span> {node.location}
+                  <span className="text-[9px] text-gray-500">{stationCodeOf(node.location)}</span> {node.location}
                 </span>
                 {i < chainOfCustodySteps.length - 1 && <span className="text-gray-600 mx-0.5" aria-hidden="true">→</span>}
               </div>
@@ -173,11 +175,11 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          <EvidenceEnvelope exhibit="FSL/26-1044–A" item="Bloodstained swab" note="Transit seal" sealed={!finished || allSealed} />
+          <EvidenceEnvelope exhibit={`${CASE_REF}–A`} item="Bloodstained swab" note="Transit seal" sealed={!finished || allSealed} />
           <div className="text-xs text-gray-400 leading-relaxed max-w-md">
             {finished
               ? 'The exhibit has travelled scene → court with a documented handover at every point. Open seams and sealed the whole way — a defensible history.'
-              : `The exhibit is currently at ${fromNode} (${stationCode(fromNode)}). Complete the handover to ${toNode ?? 'the court'} exactly as the receiving record demands.`}
+              : `The exhibit is currently at ${fromStation} (${stationCodeOf(fromStation)}). Complete the handover to ${toStation ?? 'the court'} exactly as the receiving record demands.`}
           </div>
         </div>
       </div>
@@ -193,7 +195,7 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
           </div>
           <CustodyTable records={records} />
           <p className="mt-4 text-xs text-gray-400 leading-relaxed">
-            Continuity statement: exhibit <span className="font-mono text-cyan-300">FSL/26-1044–A</span> was in the
+            Continuity statement: exhibit <span className="font-mono text-cyan-300">{CASE_REF}–A</span> was in the
             possession of a named, responsible individual at every point from scene to court; every transfer, seal and
             condition was recorded and signed at the time. An unexplained gap anywhere above would leave a question
             mark over every result that follows it.
@@ -206,66 +208,66 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
         <>
           <BenchPanel
             title={step === chainOfCustodySteps.length - 1 ? 'Final handover · into the record' : `Transfer ${String(step + 1).padStart(2, '0')}`}
-            status={form.signed ? 'ok' : 'idle'}
+            status={transferForm.signed ? 'ok' : 'idle'}
             meta={[
-              { label: 'From', value: `${fromNode} (${stationCode(fromNode)})` },
-              { label: 'To', value: `${toNode ?? 'Court'} (${stationCode(toNode ?? 'Court')})` },
-              { label: 'Exhibit', value: 'FSL/26-1044–A' },
+              { label: 'From', value: `${fromStation} (${stationCodeOf(fromStation)})` },
+              { label: 'To', value: `${toStation ?? 'Court'} (${stationCodeOf(toStation ?? 'Court')})` },
+              { label: 'Exhibit', value: `${CASE_REF}–A` },
             ]}
           >
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Handler this transfer" required>
+              <FormField label="Handler this transfer" required>
                 <input
-                  value={form.handler}
-                  onChange={(e) => setForm((f) => ({ ...f, handler: e.target.value }))}
+                  value={transferForm.handler}
+                  onChange={(e) => setTransferForm((f) => ({ ...f, handler: e.target.value }))}
                   placeholder="e.g., Insp. D. Rao, Crime Scene"
                   className="input-base"
                   aria-label="Handler name"
                 />
-              </Field>
-              <Field label="Date & time of transfer" required>
+              </FormField>
+              <FormField label="Date & time of transfer" required>
                 <input
                   type="datetime-local"
-                  value={form.datetime}
-                  onChange={(e) => setForm((f) => ({ ...f, datetime: e.target.value }))}
+                  value={transferForm.datetime}
+                  onChange={(e) => setTransferForm((f) => ({ ...f, datetime: e.target.value }))}
                   className="input-base text-gray-200"
                   aria-label="Date and time of transfer"
                 />
-              </Field>
-              <Field label="Reason for transfer" required>
-                <select value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} className="input-base" aria-label="Reason for transfer">
+              </FormField>
+              <FormField label="Reason for transfer" required>
+                <select value={transferForm.reason} onChange={(e) => setTransferForm((f) => ({ ...f, reason: e.target.value }))} className="input-base" aria-label="Reason for transfer">
                   {reasonOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
-              </Field>
-              <Field label="Exhibit condition" required>
-                <select value={form.condition} onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))} className="input-base" aria-label="Exhibit condition">
+              </FormField>
+              <FormField label="Exhibit condition" required>
+                <select value={transferForm.condition} onChange={(e) => setTransferForm((f) => ({ ...f, condition: e.target.value }))} className="input-base" aria-label="Exhibit condition">
                   {conditionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
-              </Field>
-              <Field label="Seal number (read from exhibit)" required>
+              </FormField>
+              <FormField label="Seal number (read from exhibit)" required>
                 <input
-                  value={form.seal}
-                  onChange={(e) => setForm((f) => ({ ...f, seal: e.target.value }))}
+                  value={transferForm.seal}
+                  onChange={(e) => setTransferForm((f) => ({ ...f, seal: e.target.value }))}
                   placeholder="e.g., SEAL-44813"
                   className="input-base font-mono"
                   aria-label="Seal number"
                 />
-              </Field>
+              </FormField>
               <div>
                 <label className="block text-xs font-mono uppercase tracking-wider text-gray-400 mb-1.5">
                   Authorisation <span className="text-crimson-400">*</span>
                 </label>
                 <button
-                  onClick={() => form.signed ? setForm((f) => ({ ...f, signed: false })) : setForm((f) => ({ ...f, signed: true }))}
+                  onClick={() => transferForm.signed ? setTransferForm((f) => ({ ...f, signed: false })) : setTransferForm((f) => ({ ...f, signed: true }))}
                   className={`w-full text-left rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
-                    form.signed ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-navy-600/50 text-gray-400 hover:bg-navy-800'
+                    transferForm.signed ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-navy-600/50 text-gray-400 hover:bg-navy-800'
                   }`}
-                  aria-pressed={form.signed}
+                  aria-pressed={transferForm.signed}
                 >
-                  {form.signed ? (
+                  {transferForm.signed ? (
                     <span className="inline-flex items-center gap-1.5">
                       <Icon name="check" className="w-4 h-4" />
-                      Signed by {form.handler || 'handler'} · {formatReadable(nowLocalInput())}
+                      Signed by {transferForm.handler || 'handler'} · {formatReadable(nowLocalInput())}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5">
@@ -295,12 +297,7 @@ export function ChainOfCustodyGame({ onDone }: { onDone?: () => void }) {
           </BenchPanel>
 
           {feedback && (
-            <div className={`rounded-lg border px-4 py-3 text-sm leading-relaxed animate-fade-in ${
-              feedback.type === 'ok' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200/90' : 'border-crimson-500/50 bg-crimson-600/10 text-crimson-200/90 font-medium'
-            }`}>
-              {feedback.type === 'ok' ? <Icon name="check" className="w-4 h-4 inline mr-1 -mt-0.5" /> : <Icon name="warning" className="w-4 h-4 inline mr-1 -mt-0.5" />}
-              {feedback.msg}
-            </div>
+            <FeedbackBanner status={feedback.type} msg={feedback.msg} />
           )}
 
           {records.length > 0 && (
@@ -349,7 +346,7 @@ function CustodyTable({ records }: { records: TransferRecord[] }) {
                 <td className="px-3 py-2 text-gray-500">{r.seq}</td>
                 <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{formatReadable(r.datetime)}</td>
                 <td className="px-3 py-2 text-gray-200 whitespace-nowrap">
-                  {stationCode(r.from)} <span className="text-gray-500">→</span> {stationCode(r.to)}
+                  {stationCodeOf(r.from)} <span className="text-gray-500">→</span> {stationCodeOf(r.to)}
                 </td>
                 <td className="px-3 py-2 text-gray-200">{r.handler}</td>
                 <td className="px-3 py-2 font-mono text-cyan-300">{r.seal}</td>
@@ -361,17 +358,6 @@ function CustodyTable({ records }: { records: TransferRecord[] }) {
           </tbody>
         </table>
       </div>
-    </div>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-mono uppercase tracking-wider text-gray-400 mb-1.5">
-        {label} {required && <span className="text-crimson-400">*</span>}
-      </label>
-      {children}
     </div>
   )
 }

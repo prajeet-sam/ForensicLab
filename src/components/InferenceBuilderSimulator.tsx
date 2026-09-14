@@ -129,11 +129,16 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
   const [analysisId, setAnalysisId] = useState('str')
   const [levelId, setLevelId] = useState<Level['id']>('source')
   const [weightId, setWeightId] = useState<Weight['id']>('lr')
-  const [claim, setClaim] = useState('')
+  const [draftStatement, setDraftStatement] = useState('')
   const [reviewed, setReviewed] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [signedAt, setSignedAt] = useState('')
+  const [requestRef] = useState(() => 'INF-26-' + Math.floor(100 + Math.random() * 900))
+  const [reviewRefs] = useState<Record<string, string>>(() => ({
+    sci: 'SCI-26-' + Math.floor(10 + Math.random() * 89),
+    crt: 'CRT-26-' + Math.floor(10 + Math.random() * 89),
+  }))
 
   const analysis = analyses.find((a) => a.id === analysisId)!
 
@@ -190,22 +195,22 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
       rules.push({ id: 'w-none', check: 'Weight stated', ref: 'Court', status: 'fail', text: 'Without any weight, the statement is a bare assertion. It is not a scientific conclusion and it will not survive cross-examination.' })
     }
 
-    if (wordCount(claim) < MIN_WORDS) {
+    if (wordCount(draftStatement) < MIN_WORDS) {
       rules.push({ id: 'd-short', check: 'Plain-language digest', ref: 'Court', status: 'fail', text: 'The claim is too thin to digest. A court should be able to repeat, verbatim, what you concluded and on what basis — one breath per clause.' })
-    } else if (claim.length < 40) {
+    } else if (draftStatement.length < 40) {
       rules.push({ id: 'd-ok', check: 'Plain-language digest', ref: 'Court', status: 'ok', text: 'The claim is readable. Keep the guard clauses ("supports the proposition", "is consistent with", the scale used) inside the sentence itself.' })
     } else {
       rules.push({ id: 'd-len', check: 'Plain-language digest', ref: 'Court', status: 'warn', text: 'The claim is dense. Split it into an outcome sentence and a support sentence; a paragraph is a report, not an inference statement.' })
     }
 
     return rules
-  }, [analysis, levelId, weightId, claim])
+  }, [analysis, levelId, weightId, draftStatement])
 
-  const issues = rubric.filter((r) => r.status !== 'ok').length
-  const verdict =
-    issues === 0
+  const issueCount = rubric.filter((r) => r.status !== 'ok').length
+  const reviewVerdict =
+    issueCount === 0
       ? { label: 'Sound', tone: 'ok' as const, note: 'Both reviewers could sign this statement. The inference is grounded in the analysis, carries an explicit weight, and is digestible.' }
-      : issues === 1
+      : issueCount === 1
       ? { label: 'Borderline', tone: 'warn' as const, note: 'One issue stands between this inference and a clean submission. Fix the flagged item and the same claim becomes defensible.' }
       : { label: 'Overreach — return', tone: 'fail' as const, note: 'This inference would not survive serious questioning — it asks the analysis to mean more than it can. Rebuild it, then resubmit.' }
 
@@ -215,7 +220,7 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
   return (
     <div className="space-y-5">
       {/* 1 · The analysis */}
-      <BenchPanel title="Commissioned analysis · method ceiling" status={reviewed ? 'ok' : 'run'} meta={[{ label: 'Request', value: 'INF-26-' + Math.floor(100 + Math.random() * 900) }, { label: 'Method', value: analysis.label }]}>
+      <BenchPanel title="Commissioned analysis · method ceiling" status={reviewed ? 'ok' : 'run'} meta={[{ label: 'Request', value: requestRef }, { label: 'Method', value: analysis.label }]}>
         <h3 className="text-sm font-bold text-white mb-1">1 · Choose the commissioned analysis</h3>
         <p className="text-xs text-gray-400 mb-4">Every method has a ceiling. Choose one, then read what it can — and cannot — establish.</p>
         <div className="grid sm:grid-cols-2 gap-2">
@@ -310,8 +315,8 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
         <label className="block mb-2">
           <span className="block text-xs font-mono uppercase tracking-wider text-gray-400 mb-1.5">Draft the inference statement</span>
           <textarea
-            value={claim}
-            onChange={(e) => { setClaim(e.target.value); setReviewed(false); setCompleted(false) }}
+            value={draftStatement}
+            onChange={(e) => { setDraftStatement(e.target.value); setReviewed(false); setCompleted(false) }}
             rows={3}
             placeholder={`e.g., The DNA profile obtained from the bloodstain is ${
               weightId === 'lr' ? 'over a trillion times more probable if it originated from Mr X than from an unrelated person' :
@@ -325,9 +330,9 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
         </label>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs text-gray-500">
-            {wordCount(claim) >= MIN_WORDS ? `${wordCount(claim)} words — enough to digest.` : `At least ${MIN_WORDS} words so the court can repeat it back.`}
+            {wordCount(draftStatement) >= MIN_WORDS ? `${wordCount(draftStatement)} words — enough to digest.` : `At least ${MIN_WORDS} words so the court can repeat it back.`}
           </span>
-          <button onClick={runReview} disabled={reviewing || wordCount(claim) < MIN_WORDS} className="btn-primary !px-5 !py-2.5 !text-sm">
+          <button onClick={runReview} disabled={reviewing || wordCount(draftStatement) < MIN_WORDS} className="btn-primary !px-5 !py-2.5 !text-sm">
             <Icon name={reviewing ? 'clock' : 'check'} className="w-4 h-4" />
             {reviewing ? 'Reviewing…' : 'Submit for independent review'}
           </button>
@@ -350,7 +355,7 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
             <h3 className="text-lg font-bold text-white">Review records</h3>
             <div className="flex items-center gap-3">
               <span className="text-xs font-mono text-gray-500">Issued {formatReadable(nowLocalInput())}</span>
-              <Stamp text={verdict.label} tone={verdict.tone} />
+              <Stamp text={reviewVerdict.label} tone={reviewVerdict.tone} />
             </div>
           </div>
 
@@ -358,12 +363,12 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
             {reviewers.map((r) => {
               const checks = r.id === 'sci' ? scienceChecks : courtChecks
               return (
-                <PaperDoc key={r.id} agency={r.org} formCode="PR-REV" title={r.title} refNo={(r.id === 'sci' ? 'SCI' : 'CRT') + '-26-' + Math.floor(10 + Math.random() * 89)}>
+                <PaperDoc key={r.id} agency={r.org} formCode="PR-REV" title={r.title} refNo={reviewRefs[r.id]}>
                   <p className="text-xs text-gray-600">
                     Statement works referred by the case file. The reviewer checked the claim set against the method ceiling and the requirements of disclosure.
                   </p>
                   <PaperField label="Statement under review">
-                    <PaperRule>{claim || '—'}</PaperRule>
+                    <PaperRule>{draftStatement || '—'}</PaperRule>
                   </PaperField>
                   <PaperField label="Method & claim level">
                     {analysis.label} · {levels.find((l) => l.id === levelId)?.label}
@@ -395,12 +400,12 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
             })}
           </div>
 
-          <div className={`rounded-xl border p-5 ${verdict.tone === 'ok' ? 'border-emerald-500/40 bg-emerald-500/5' : verdict.tone === 'warn' ? 'border-amber-500/40 bg-amber-500/5' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
+          <div className={`rounded-xl border p-5 ${reviewVerdict.tone === 'ok' ? 'border-emerald-500/40 bg-emerald-500/5' : reviewVerdict.tone === 'warn' ? 'border-amber-500/40 bg-amber-500/5' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
             <div className="flex items-center gap-2.5 mb-2">
-              <Icon name={issues === 0 ? 'check' : 'warning'} className={`w-5 h-5 ${verdict.tone === 'ok' ? 'text-emerald-400' : verdict.tone === 'warn' ? 'text-amber-400' : 'text-crimson-400'}`} />
-              <h3 className="font-bold text-white">Review verdict: {verdict.label}</h3>
+              <Icon name={issueCount === 0 ? 'check' : 'warning'} className={`w-5 h-5 ${reviewVerdict.tone === 'ok' ? 'text-emerald-400' : reviewVerdict.tone === 'warn' ? 'text-amber-400' : 'text-crimson-400'}`} />
+              <h3 className="font-bold text-white">Review verdict: {reviewVerdict.label}</h3>
             </div>
-            <p className="text-sm leading-relaxed text-gray-200">{verdict.note}</p>
+            <p className="text-sm leading-relaxed text-gray-200">{reviewVerdict.note}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {rubric.map((r) => (
                 <span key={r.id} className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
@@ -435,12 +440,12 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
               <Icon name="check" className="w-6 h-6 text-emerald-400" />
               <h3 className="text-lg font-bold text-white">Peer review complete</h3>
             </div>
-            <Stamp text={verdict.label} tone={verdict.tone} />
+            <Stamp text={reviewVerdict.label} tone={reviewVerdict.tone} />
           </div>
 
           <PaperDoc agency="State Forensic Laboratory — Quality & Standards" formCode="CRT-INF" title="Certificate of peer review — inference statement" refNo={signedAt ? 'INF/26-' + signedAt.replace(/[^0-9]/g, '').slice(0, 6) : 'INF/26-000000'}>
             <PaperField label="Statement reviewed">
-              <PaperRule>{claim || '—'}</PaperRule>
+              <PaperRule>{draftStatement || '—'}</PaperRule>
             </PaperField>
             <PaperField label="Method & claim level">
               {analysis.label} · {levels.find((l) => l.id === levelId)?.label} · {weights.find((w) => w.id === weightId)?.label}
@@ -449,7 +454,7 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
               {reviewers.map((r) => r.name).join(' and ')}
             </PaperField>
             <PaperField label="Committee verdict">
-              {verdict.label} — {verdict.note}
+              {reviewVerdict.label} — {reviewVerdict.note}
             </PaperField>
             <PaperField label="Grounding confirmed">
               {analysis.truth[levelId]}
@@ -469,7 +474,7 @@ export function InferenceBuilderSimulator({ onDone }: { onDone?: () => void }) {
             </div>
           </PaperDoc>
 
-          <BenchPanel title="Review file" status="ok" meta={[{ label: 'Verdict', value: verdict.label }, { label: 'Signed', value: signedAt ? formatReadable(signedAt) : '—' }]}>
+          <BenchPanel title="Review file" status="ok" meta={[{ label: 'Verdict', value: reviewVerdict.label }, { label: 'Signed', value: signedAt ? formatReadable(signedAt) : '—' }]}>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="text-left text-[10px] font-mono uppercase text-gray-500 border-b border-navy-700/50">

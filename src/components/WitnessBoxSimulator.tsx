@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from './Icon'
+import { ProgressDots } from './form'
 
 type Grade = 'calibrated' | 'overreach' | 'cautious' | 'stall'
 
@@ -141,25 +142,25 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
   const [chosen, setChosen] = useState<number | null>(null)
   const [objected, setObjected] = useState(false)
   const [objectedCount, setObjectedCount] = useState(0)
-  const [seconds, setSeconds] = useState(TIME_LIMIT)
-  const lastRoundRef = useRef(false)
-  lastRoundRef.current = round === ROUNDS.length - 1
+  const [timeRemaining, setTimeRemaining] = useState(TIME_LIMIT)
+  const isLastRoundRef = useRef(false)
+  isLastRoundRef.current = round === ROUNDS.length - 1
 
-  const finished = round >= ROUNDS.length
-  const r = ROUNDS[Math.min(round, ROUNDS.length - 1)]
+  const allRoundsComplete = round >= ROUNDS.length
+  const currentRound = ROUNDS[Math.min(round, ROUNDS.length - 1)]
 
   useEffect(() => {
-    setSeconds(TIME_LIMIT)
+    setTimeRemaining(TIME_LIMIT)
     setChosen(null)
     setObjected(false)
   }, [round])
 
   useEffect(() => {
-    if (finished || chosen !== null) return
-    if (seconds <= 0) {
+    if (allRoundsComplete || chosen !== null) return
+    if (timeRemaining <= 0) {
       if (answers.length === round) {
         setAnswers((a) => [...a, { grade: 'stall', index: -1 }])
-        if (lastRoundRef.current) {
+        if (isLastRoundRef.current) {
           setRound((n) => n + 1)
           onDone?.()
         } else {
@@ -168,11 +169,11 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
       }
       return
     }
-    const t = setTimeout(() => setSeconds((s) => s - 1), 1000)
+    const t = setTimeout(() => setTimeRemaining((s) => s - 1), 1000)
     return () => clearTimeout(t)
-  }, [seconds, chosen, round, finished, answers.length, onDone])
+  }, [timeRemaining, chosen, round, allRoundsComplete, answers.length, onDone])
 
-  const counts = useMemo(
+  const gradeCounts = useMemo(
     () =>
       answers.reduce<Record<Grade, number>>(
         (acc, a) => {
@@ -185,16 +186,16 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
   )
 
   const verdict =
-    counts.calibrated === ROUNDS.length
+    gradeCounts.calibrated === ROUNDS.length
       ? { label: 'Steady witness', note: 'Every answer held the line between overclaiming and abandoning the science. This is how expert testimony survives.', cls: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' }
-      : counts.calibrated >= 3
+      : gradeCounts.calibrated >= 3
       ? { label: 'Mostly calibrated', note: 'Strong, with slips that a cross-examiner could exploit. Re-read the flagged answers below.', cls: 'text-amber-400 border-amber-500/40 bg-amber-500/10' }
       : { label: 'Needs preparation', note: 'Several answers either overstated what the science shows or gave it up too easily. Study the model answers below, then retake the box.', cls: 'text-crimson-400 border-crimson-500/40 bg-crimson-600/10' }
 
   const pick = (index: number) => {
     if (chosen !== null) return
     setChosen(index)
-    setAnswers((a) => [...a, { grade: r.responses[index].grade, index }])
+    setAnswers((a) => [...a, { grade: currentRound.responses[index].grade, index }])
   }
 
   const object = () => {
@@ -215,13 +216,13 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
     setChosen(null)
     setObjected(false)
     setObjectedCount(0)
-    setSeconds(TIME_LIMIT)
+    setTimeRemaining(TIME_LIMIT)
     onDone?.()
   }
 
-  if (finished) {
-    const stallNote = counts.stall
-      ? ` You ran the clock out on ${counts.stall} question${counts.stall > 1 ? 's' : ''} — the judge noted the silence.`
+  if (allRoundsComplete) {
+    const stallNote = gradeCounts.stall
+      ? ` You ran the clock out on ${gradeCounts.stall} question${gradeCounts.stall > 1 ? 's' : ''} — the judge noted the silence.`
       : ''
     return (
       <div className="space-y-5">
@@ -232,10 +233,10 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
           </div>
           <p className="text-sm text-gray-300 leading-relaxed">{verdict.note}{stallNote}</p>
           <div className="flex flex-wrap gap-2 mt-3 text-xs font-mono">
-            <span className="px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-400">{counts.calibrated} calibrated</span>
-            <span className="px-2.5 py-1 rounded-full border border-crimson-500/40 text-crimson-400">{counts.overreach} overclaimed</span>
-            <span className="px-2.5 py-1 rounded-full border border-amber-500/40 text-amber-400">{counts.cautious} too vague</span>
-            {counts.stall > 0 && <span className="px-2.5 py-1 rounded-full border border-gray-500/50 text-gray-300">{counts.stall} stalled</span>}
+            <span className="px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-400">{gradeCounts.calibrated} calibrated</span>
+            <span className="px-2.5 py-1 rounded-full border border-crimson-500/40 text-crimson-400">{gradeCounts.overreach} overclaimed</span>
+            <span className="px-2.5 py-1 rounded-full border border-amber-500/40 text-amber-400">{gradeCounts.cautious} too vague</span>
+            {gradeCounts.stall > 0 && <span className="px-2.5 py-1 rounded-full border border-gray-500/50 text-gray-300">{gradeCounts.stall} stalled</span>}
           </div>
           <p className="text-xs text-gray-400 mt-3">
             Objections raised: {objectedCount} of {ROUNDS.length}
@@ -245,15 +246,15 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
 
         <div className="space-y-3">
           <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500">With the answers that cost you</p>
-          {ROUNDS.map((rn, i) => {
-            const a = answers[i]
-            const meta = a ? gradeMeta[a.grade] : null
+          {ROUNDS.map((roundData, i) => {
+            const answer = answers[i]
+            const meta = answer ? gradeMeta[answer.grade] : null
             return (
               <div key={i} className={`rounded-lg border px-4 py-3 ${meta ? meta.cls : 'border-navy-600/40'}`}>
-                <p className="text-xs font-semibold opacity-80">{rn.speaker}: {rn.challenge}</p>
+                <p className="text-xs font-semibold opacity-80">{roundData.speaker}: {roundData.challenge}</p>
                 <p className="text-sm text-gray-200 mt-1.5">
                   <span className="font-mono text-[10px] uppercase tracking-wider mr-2 opacity-70">{meta?.label}</span>
-                  {a?.index === -1 ? 'The clock ran out before you answered.' : rn.model}
+                  {answer?.index === -1 ? 'The clock ran out before you answered.' : roundData.model}
                 </p>
               </div>
             )
@@ -268,20 +269,20 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
     )
   }
 
-  const secondsPct = (seconds / TIME_LIMIT) * 100
-  const urgent = seconds <= 10
-  const timerColor = urgent ? 'bg-crimson-500' : seconds <= 25 ? 'bg-amber-400' : 'bg-cyan-400'
+  const secondsPct = (timeRemaining / TIME_LIMIT) * 100
+  const urgent = timeRemaining <= 10
+  const timerColor = urgent ? 'bg-crimson-500' : timeRemaining <= 25 ? 'bg-amber-400' : 'bg-cyan-400'
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-navy-600/40 bg-navy-900/60 px-5 py-4">
         <div className="flex items-center gap-2 mb-1 text-xs font-mono uppercase tracking-widest text-amber-400/80">
-          <Icon name="court" className="w-4 h-4" /> {r.speaker} · question {round + 1} of {ROUNDS.length}
+          <Icon name="court" className="w-4 h-4" /> {currentRound.speaker} · question {round + 1} of {ROUNDS.length}
         </div>
         <div className="flex items-start justify-between gap-4">
-          <p className="text-white font-semibold leading-relaxed">“{r.challenge}”</p>
+          <p className="text-white font-semibold leading-relaxed">“{currentRound.challenge}”</p>
         </div>
-        <p className="text-xs text-gray-500 mt-2 italic">{r.pressure}</p>
+        <p className="text-xs text-gray-500 mt-2 italic">{currentRound.pressure}</p>
 
         <div className="mt-3 flex items-center gap-3">
           <div className="h-1.5 flex-1 rounded-full bg-navy-700 overflow-hidden">
@@ -291,7 +292,7 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
             />
           </div>
           <span className={`text-[11px] font-mono w-20 text-right ${urgent && chosen === null ? 'text-crimson-400 animate-pulse' : 'text-gray-500'}`}>
-            {chosen !== null ? 'answered' : `${seconds}s left`}
+            {chosen !== null ? 'answered' : `${timeRemaining}s left`}
           </span>
         </div>
       </div>
@@ -308,12 +309,12 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
       {objected && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-3">
           <p className="text-[10px] font-mono uppercase tracking-widest text-amber-400 mb-1">Judge's ruling · objection sustained</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{r.objection}</p>
+          <p className="text-sm text-gray-200 leading-relaxed">{currentRound.objection}</p>
         </div>
       )}
 
       <ol className="grid gap-2">
-        {r.responses.map((res, i) => {
+        {currentRound.responses.map((res, i) => {
           const selected = chosen === i
           const show = chosen !== null
           const meta = show && selected ? gradeMeta[res.grade] : null
@@ -346,18 +347,14 @@ export function WitnessBoxSimulator({ onDone }: { onDone?: () => void }) {
       {chosen !== null && (
         <div className="rounded-xl border border-cyan-500/30 bg-cyan-600/10 px-5 py-4">
           <p className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 mb-1">What a calibrated witness says</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{r.model}</p>
+          <p className="text-sm text-gray-200 leading-relaxed">{currentRound.model}</p>
           <button className="btn-primary mt-4" onClick={goNext}>
             {round === ROUNDS.length - 1 ? 'Face the verdict' : 'Next question'}
           </button>
         </div>
       )}
 
-      <div className="flex items-center gap-1.5">
-        {ROUNDS.map((_, i) => (
-          <span key={i} className={`h-1.5 flex-1 rounded-full ${i < answers.length ? 'bg-cyan-400' : 'bg-navy-700'}`} />
-        ))}
-      </div>
+      <ProgressDots total={ROUNDS.length} completed={answers.length} />
     </div>
   )
 }

@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { FlowBox } from './display'
 
+// ABO inheritance simulator — predicts a child's blood group from the parents.
+// Phenotype mode lists the possible child groups; genotype mode renders a
+// Punnett square of exactly equal zygote outcomes.
+
 export type Allele = 'IA' | 'IB' | 'i'
 export type GenotypeKey = 'IAIA' | 'IAi' | 'IBIB' | 'IBi' | 'IAIB' | 'ii'
 export type Phenotype = 'A' | 'B' | 'AB' | 'O'
@@ -16,9 +20,8 @@ export const genotypeOptions: { key: GenotypeKey; label: string; gametes: Allele
 
 const phenotypes: Phenotype[] = ['A', 'B', 'AB', 'O']
 
-function genotypeOf(key: GenotypeKey): Allele[] {
-  const g = genotypeOptions.find((o) => o.key === key)!
-  return g.gametes.map((allele) => allele) // returns [g1, g2]
+function gametesOf(genotype: GenotypeKey): Allele[] {
+  return genotypeOptions.find((o) => o.key === genotype)!.gametes
 }
 
 function allelesForPhenotype(p: Phenotype): GenotypeKey[] {
@@ -34,8 +37,8 @@ function allelesForPhenotype(p: Phenotype): GenotypeKey[] {
   }
 }
 
-function childGenotype(a: Allele, b: Allele): GenotypeKey {
-  const pair = [a, b].sort() as Allele[]
+function childGenotype(alleleA: Allele, alleleB: Allele): GenotypeKey {
+  const pair = [alleleA, alleleB].sort() as Allele[]
   if (pair.includes('IA') && pair.includes('IB')) return 'IAIB'
   if (pair[0] === 'IA' && pair[1] === 'IA') return 'IAIA'
   if (pair[0] === 'i' && pair.includes('IA')) return 'IAi'
@@ -44,68 +47,68 @@ function childGenotype(a: Allele, b: Allele): GenotypeKey {
   return 'ii'
 }
 
-function phenotypeOfGenotype(g: GenotypeKey): Phenotype {
-  return genotypeOptions.find((o) => o.key === g)!.phenotype
+function phenotypeOfGenotype(genotype: GenotypeKey): Phenotype {
+  return genotypeOptions.find((o) => o.key === genotype)!.phenotype
 }
 
-const phenotypeStyles: Record<Phenotype, { text: string; bg: string }> = {
+const phenotypeTone: Record<Phenotype, { text: string; bg: string }> = {
   A: { text: 'text-crimson-300', bg: 'bg-crimson-600/25' },
   B: { text: 'text-cyan-300', bg: 'bg-cyan-600/25' },
   AB: { text: 'text-amber-300', bg: 'bg-amber-500/25' },
   O: { text: 'text-gray-200', bg: 'bg-navy-700' },
 }
 
-function RbcAntigens(p: Phenotype) {
-  return p === 'A' ? 'A' : p === 'B' ? 'B' : p === 'AB' ? 'A + B' : 'A — none (H only)'
+function rbcAntigens(phenotype: Phenotype) {
+  return phenotype === 'A' ? 'A' : phenotype === 'B' ? 'B' : phenotype === 'AB' ? 'A + B' : 'A — none (H only)'
 }
-function PlasmaAntibodies(p: Phenotype) {
-  return p === 'A' ? 'anti-B' : p === 'B' ? 'anti-A' : p === 'AB' ? 'none' : 'anti-A + anti-B'
+function plasmaAntibodies(phenotype: Phenotype) {
+  return phenotype === 'A' ? 'anti-B' : phenotype === 'B' ? 'anti-A' : phenotype === 'AB' ? 'none' : 'anti-A + anti-B'
 }
 
 export function ABOInheritanceSimulator() {
   const [mode, setMode] = useState<'phenotype' | 'genotype'>('phenotype')
-  const [motherP, setMotherP] = useState<Phenotype>('A')
-  const [fatherP, setFatherP] = useState<Phenotype>('B')
-  const [motherG, setMotherG] = useState<GenotypeKey>('IAi')
-  const [fatherG, setFatherG] = useState<GenotypeKey>('IBi')
+  const [motherPhenotype, setMotherPhenotype] = useState<Phenotype>('A')
+  const [fatherPhenotype, setFatherPhenotype] = useState<Phenotype>('B')
+  const [motherGenotype, setMotherGenotype] = useState<GenotypeKey>('IAi')
+  const [fatherGenotype, setFatherGenotype] = useState<GenotypeKey>('IBi')
 
-  const motherAlleles = useMemo(() => genotypeOf(motherG), [motherG])
-  const fatherAlleles = useMemo(() => genotypeOf(fatherG), [fatherG])
+  const motherAlleles = useMemo(() => gametesOf(motherGenotype), [motherGenotype])
+  const fatherAlleles = useMemo(() => gametesOf(fatherGenotype), [fatherGenotype])
 
-  const grid = useMemo(() => {
-    const cells: { g: GenotypeKey; p: Phenotype }[] = []
+  const punnettCells = useMemo(() => {
+    const cells: { genotype: GenotypeKey; phenotype: Phenotype }[] = []
     for (const a of motherAlleles) {
       for (const b of fatherAlleles) {
         const g = childGenotype(a, b)
-        cells.push({ g, p: phenotypeOfGenotype(g) })
+        cells.push({ genotype: g, phenotype: phenotypeOfGenotype(g) })
       }
     }
     return cells
   }, [motherAlleles, fatherAlleles])
 
-  const possibleFromPhenotype = useMemo(() => {
-    const mgs = allelesForPhenotype(motherP)
-    const fgs = allelesForPhenotype(fatherP)
+  const possibleChildPhenotypes = useMemo(() => {
+    const motherGenotypes = allelesForPhenotype(motherPhenotype)
+    const fatherGenotypes = allelesForPhenotype(fatherPhenotype)
     const phenotypes = new Set<Phenotype>()
-    for (const mg of mgs) {
-      for (const fg of fgs) {
-        for (const a of genotypeOf(mg)) {
-          for (const b of genotypeOf(fg)) {
-            phenotypes.add(phenotypeOfGenotype(childGenotype(a, b)))
+    for (const motherGeno of motherGenotypes) {
+      for (const fatherGeno of fatherGenotypes) {
+        for (const alleleA of gametesOf(motherGeno)) {
+          for (const alleleB of gametesOf(fatherGeno)) {
+            phenotypes.add(phenotypeOfGenotype(childGenotype(alleleA, alleleB)))
           }
         }
       }
     }
     return phenotypes
-  }, [motherP, fatherP])
+  }, [motherPhenotype, fatherPhenotype])
 
-  const results = useMemo(() => {
+  const phenotypeCounts = useMemo(() => {
     const count: Record<Phenotype, number> = { A: 0, B: 0, AB: 0, O: 0 }
-    grid.forEach((c) => {
-      count[c.p] += 1
+    punnettCells.forEach((cell) => {
+      count[cell.phenotype] += 1
     })
     return count
-  }, [grid])
+  }, [punnettCells])
 
   return (
     <div className="space-y-5">
@@ -134,28 +137,29 @@ export function ABOInheritanceSimulator() {
       </div>
 
       {/* Parent selection */}
+      {/* parent selection */}
       <div className="grid sm:grid-cols-2 gap-4">
         <ParentPicker
           title="Mother"
-          mother={true}
+          isMother
           mode={mode}
-          phenotype={motherP}
-          genotype={motherG}
-          onPhenotype={setMotherP}
-          onGenotype={setMotherG}
+          phenotype={motherPhenotype}
+          genotype={motherGenotype}
+          onPhenotype={setMotherPhenotype}
+          onGenotype={setMotherGenotype}
         />
         <ParentPicker
           title="Father"
-          mother={false}
+          isMother
           mode={mode}
-          phenotype={fatherP}
-          genotype={fatherG}
-          onPhenotype={setFatherP}
-          onGenotype={setFatherG}
+          phenotype={fatherPhenotype}
+          genotype={fatherGenotype}
+          onPhenotype={setFatherPhenotype}
+          onGenotype={setFatherGenotype}
         />
       </div>
 
-      {/* Results */}
+      {/* results — possible child groups (phenotype) or Punnett square (genotype) */}
       {mode === 'phenotype' ? (
         <div className="rounded-xl border border-cyan-500/30 bg-cyan-600/5 p-5">
           <h3 className="text-sm font-bold text-cyan-300 mb-1">Possible child blood groups</h3>
@@ -163,26 +167,26 @@ export function ABOInheritanceSimulator() {
             With phenotypes alone, exact probabilities cannot be given — group A can be IᴬIᴬ or Iᴬi and group B can be
             IᴮIᴮ or Iᴮi. Switch to genotype mode for precise outcomes.
           </p>
-          <div className="flex flex-wrap gap-2 animate-fade-in" key={`${motherP}-${fatherP}`}>
+          <div className="flex flex-wrap gap-2 animate-fade-in" key={`${motherPhenotype}-${fatherPhenotype}`}>
             {phenotypes.map((p) => (
               <div
                 key={p}
-                className={`rounded-lg border px-4 py-3 ${phenotypeStyles[p].bg} ${
-                  possibleFromPhenotype.has(p) ? 'border-cyan-500/50' : 'border-navy-600/40 opacity-30'
+                className={`rounded-lg border px-4 py-3 ${phenotypeTone[p].bg} ${
+                  possibleChildPhenotypes.has(p) ? 'border-cyan-500/50' : 'border-navy-600/40 opacity-30'
                 }`}
               >
-                <p className={`text-xl font-bold ${phenotypeStyles[p].text}`}>Group {p}</p>
+                <p className={`text-xl font-bold ${phenotypeTone[p].text}`}>Group {p}</p>
                 <p className="text-[11px] text-gray-400 mt-1">
-                  {RbcAntigens(p)} · {PlasmaAntibodies(p)}
+                  {rbcAntigens(p)} · {plasmaAntibodies(p)}
                 </p>
               </div>
             ))}
           </div>
           <div className="mt-4 grid gap-1.5 text-xs">
-            {phenotypes.filter((p) => possibleFromPhenotype.has(p)).map((p) => (
+            {phenotypes.filter((p) => possibleChildPhenotypes.has(p)).map((p) => (
               <p key={p} className="text-gray-300">
-                <span className={`font-mono font-bold ${phenotypeStyles[p].text}`}>{p}</span> — cells carry{' '}
-                {RbcAntigens(p)}; plasma has {PlasmaAntibodies(p)}.
+                <span className={`font-mono font-bold ${phenotypeTone[p].text}`}>{p}</span> — cells carry{' '}
+                {rbcAntigens(p)}; plasma has {plasmaAntibodies(p)}.
               </p>
             ))}
           </div>
@@ -205,21 +209,21 @@ export function ABOInheritanceSimulator() {
                     </td>
                   ))}
                 </tr>
-                {motherAlleles.map((mal, mi) => (
-                  <tr key={mal}>
+                {motherAlleles.map((motherAllele, motherIdx) => (
+                  <tr key={motherAllele}>
                     <td className="p-1">
-                      <ParentGamete allele={mal} parent="mother" />
+                      <ParentGamete allele={motherAllele} parent="mother" />
                     </td>
-                    {fatherAlleles.map((fal, fi) => {
-                      const g = childGenotype(mal, fal)
+                    {fatherAlleles.map((fatherAllele, fatherIdx) => {
+                      const g = childGenotype(motherAllele, fatherAllele)
                       const p = phenotypeOfGenotype(g)
-                      const cellIdx = mi * fatherAlleles.length + fi
+                      const cellIndex = motherIdx * fatherAlleles.length + fatherIdx
                       return (
-                        <td key={`${mal}-${fal}`} className="p-1 text-center animate-fade-in" style={{ animationDelay: `${cellIdx * 0.15}s` }}>
-                          <div className={`rounded-lg border px-3 py-2.5 ${phenotypeStyles[p].bg} ${
+                        <td key={`${motherAllele}-${fatherAllele}`} className="p-1 text-center animate-fade-in" style={{ animationDelay: `${cellIndex * 0.15}s` }}>
+                          <div className={`rounded-lg border px-3 py-2.5 ${phenotypeTone[p].bg} ${
                             p === 'AB' ? 'border-amber-500/50' : p === 'A' ? 'border-crimson-500/40' : p === 'B' ? 'border-cyan-500/40' : 'border-navy-500/40'
                           }`}>
-                            <p className={`font-bold ${phenotypeStyles[p].text}`}>{genotypeLabel(g)}</p>
+                            <p className={`font-bold ${phenotypeTone[p].text}`}>{genotypeLabel(g)}</p>
                             <p className="text-[11px] text-gray-400">→ {p}</p>
                           </div>
                         </td>
@@ -233,40 +237,40 @@ export function ABOInheritanceSimulator() {
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {phenotypes.map((p) => {
-              const n = results[p]
+              const n = phenotypeCounts[p]
               const frac = { A: 4, B: 4, AB: 4, O: 4 }[p] || 4
               return (
-                <div key={p} className={`rounded-lg px-3 py-2.5 border ${phenotypeStyles[p].bg} ${
+                <div key={p} className={`rounded-lg px-3 py-2.5 border ${phenotypeTone[p].bg} ${
                   p === 'AB' ? 'border-amber-500/40' : p === 'A' ? 'border-crimson-500/30' : p === 'B' ? 'border-cyan-500/30' : 'border-navy-500/40'
                 }`}>
-                  <p className={`text-lg font-extrabold ${phenotypeStyles[p].text}`}>Group {p}</p>
+                  <p className={`text-lg font-extrabold ${phenotypeTone[p].text}`}>Group {p}</p>
                   <p className="text-xs text-gray-400 font-mono">
-                    {n}/{grid.length} cells{grid.length > 0 && n > 0 ? ` · ${Math.round((n / grid.length) * 100)}%` : ''}
+                    {n}/{punnettCells.length} cells{punnettCells.length > 0 && n > 0 ? ` · ${Math.round((n / punnettCells.length) * 100)}%` : ''}
                   </p>
                 </div>
               )
             })}
           </div>
           <p className="text-[11px] text-gray-500 mt-3">
-            In this example the grid is 2 × 2, so each cell equals 25%. Clear the common simplification: inheritance is
+            In this example the Punnett square is 2 × 2, so each cell equals 25%. Clear the common simplification: inheritance is
             per-conception — the percentages describe a distribution over many offspring, not a guarantee for any one child.
           </p>
         </div>
       )}
 
-      {/* Antigens + antibodies summary */}
+      {/* selected cross — antigens & antibodies summary */}
       <div className="rounded-xl border border-navy-600/40 bg-navy-900/60 p-5">
         <h3 className="text-sm font-bold text-white mb-3">Selected cross — antigens & antibodies</h3>
         <div className="grid sm:grid-cols-2 gap-2">
           <div className="rounded-lg bg-navy-800 border border-navy-600/40 p-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-crimson-400 mb-1">{mode === 'phenotype' ? `Mother · ${motherP}` : `Mother · ${genotypeLabel(motherG)}`}</p>
-            <p className="text-xs text-gray-300">RBC: {RbcAntigens(motherP)}</p>
-            <p className="text-xs text-gray-300">Plasma: {PlasmaAntibodies(motherP)}</p>
+            <p className="text-xs font-mono uppercase tracking-wider text-crimson-400 mb-1">{mode === 'phenotype' ? `Mother · ${motherPhenotype}` : `Mother · ${genotypeLabel(motherGenotype)}`}</p>
+            <p className="text-xs text-gray-300">RBC: {rbcAntigens(motherPhenotype)}</p>
+            <p className="text-xs text-gray-300">Plasma: {plasmaAntibodies(motherPhenotype)}</p>
           </div>
           <div className="rounded-lg bg-navy-800 border border-navy-600/40 p-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1">{mode === 'phenotype' ? `Father · ${fatherP}` : `Father · ${genotypeLabel(fatherG)}`}</p>
-            <p className="text-xs text-gray-300">RBC: {RbcAntigens(fatherP)}</p>
-            <p className="text-xs text-gray-300">Plasma: {PlasmaAntibodies(fatherP)}</p>
+            <p className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1">{mode === 'phenotype' ? `Father · ${fatherPhenotype}` : `Father · ${genotypeLabel(fatherGenotype)}`}</p>
+            <p className="text-xs text-gray-300">RBC: {rbcAntigens(fatherPhenotype)}</p>
+            <p className="text-xs text-gray-300">Plasma: {plasmaAntibodies(fatherPhenotype)}</p>
           </div>
         </div>
       </div>
@@ -289,13 +293,13 @@ function ParentGamete({ allele, parent }: { allele: Allele; parent: 'mother' | '
   )
 }
 
-function genotypeLabel(g: GenotypeKey): string {
-  return genotypeOptions.find((o) => o.key === g)!.label
+function genotypeLabel(genotype: GenotypeKey): string {
+  return genotypeOptions.find((o) => o.key === genotype)!.label
 }
 
 function ParentPicker({
   title,
-  mother,
+  isMother,
   mode,
   phenotype,
   genotype,
@@ -303,18 +307,17 @@ function ParentPicker({
   onGenotype,
 }: {
   title: string
-  mother: boolean
+  isMother: boolean
   mode: 'phenotype' | 'genotype'
   phenotype: Phenotype
   genotype: GenotypeKey
   onPhenotype: (p: Phenotype) => void
   onGenotype: (g: GenotypeKey) => void
 }) {
-  const accent = mother ? 'crimson' : 'cyan'
   return (
-    <div className={`rounded-xl border p-4 ${mother ? 'border-crimson-500/30 bg-crimson-600/5' : 'border-cyan-500/30 bg-cyan-600/5'}`}>
+    <div className={`rounded-xl border p-4 ${isMother ? 'border-crimson-500/30 bg-crimson-600/5' : 'border-cyan-500/30 bg-cyan-600/5'}`}>
       <div className="flex items-center gap-2 mb-3">
-        <FlowBox label={title} tone={mother ? 'crimson' : 'cyan'} />
+        <FlowBox label={title} tone={isMother ? 'crimson' : 'cyan'} />
         <span className="text-xs text-gray-500">
           {mode === 'phenotype' ? `phenotype ${phenotype}` : `genotype ${genotypeLabel(genotype)}`}
         </span>
@@ -327,7 +330,7 @@ function ParentPicker({
               onClick={() => onPhenotype(p)}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
                 phenotype === p
-                  ? mother
+                  ? isMother
                     ? 'bg-crimson-600 text-white border-crimson-500'
                     : 'bg-cyan-600 text-white border-cyan-500'
                   : 'border-navy-600 text-gray-300 hover:bg-navy-800'
@@ -345,7 +348,7 @@ function ParentPicker({
               onClick={() => onGenotype(g.key)}
               className={`px-2 py-1.5 rounded-lg text-xs font-mono font-bold border transition-colors ${
                 genotype === g.key
-                  ? mother
+                  ? isMother
                     ? 'bg-crimson-600 text-white border-crimson-500'
                     : 'bg-cyan-600 text-white border-cyan-500'
                   : 'border-navy-600 text-gray-300 hover:bg-navy-800'

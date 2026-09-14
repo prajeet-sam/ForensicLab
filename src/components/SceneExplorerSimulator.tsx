@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from './Icon'
+import { ProgressDots } from './form'
 
 interface Zone {
   id: string
@@ -155,7 +156,7 @@ interface KitItem {
   required: boolean
 }
 
-const KIT: KitItem[] = [
+const KIT_ITEMS: KitItem[] = [
   { id: 'gloves', label: 'Nitrile gloves', required: true },
   { id: 'shoe', label: 'Shoe covers', required: true },
   { id: 'suit', label: 'Disposable scene suit', required: true },
@@ -215,25 +216,25 @@ function ZoneSpot({ zone, done, active, onClick }: { zone: Zone; done: boolean; 
 }
 
 export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
-  const [stage, setStage] = useState<'kit' | 'scene' | 'casework' | 'report'>('kit')
-  const [donned, setDonned] = useState<Set<string>>(() => new Set())
+  const [currentStage, setCurrentStage] = useState<'kit' | 'scene' | 'casework' | 'report'>('kit')
+  const [equippedItems, setEquippedItems] = useState<Set<string>>(() => new Set())
   const [delisted, setDelisted] = useState<Set<string>>(() => new Set())
   const [kitMistakes, setKitMistakes] = useState(0)
-  const [surveyed, setSurveyed] = useState<Set<string>>(() => new Set())
+  const [surveyedZones, setSurveyedZones] = useState<Set<string>>(() => new Set())
   const [activeZone, setActiveZone] = useState<string | null>(null)
-  const [step, setStep] = useState(0)
+  const [decisionStep, setDecisionStep] = useState(0)
   const [chosen, setChosen] = useState<number | null>(null)
-  const [correct, setCorrect] = useState(0)
+  const [correctCount, setCorrectCount] = useState(0)
 
-  const dc = DECISIONS[step]
+  const currentDecision = DECISIONS[decisionStep]
   const isDelisted = (id: string) => delisted.has(id)
 
-  const allDonned = KIT.filter((k) => k.required).every((k) => donned.has(k.id))
+  const allDonned = KIT_ITEMS.filter((k) => k.required).every((k) => equippedItems.has(k.id))
 
-  const don = (item: KitItem) => {
-    if (donned.has(item.id) || delisted.has(item.id)) return
+  const donItem = (item: KitItem) => {
+    if (equippedItems.has(item.id) || delisted.has(item.id)) return
     if (item.required) {
-      setDonned((d) => new Set(d).add(item.id))
+      setEquippedItems((d) => new Set(d).add(item.id))
     } else {
       setKitMistakes((m) => m + 1)
       setDelisted((x) => new Set(x).add(item.id))
@@ -241,37 +242,37 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
   }
 
   const survey = (zoneId: string) => {
-    const next = new Set(surveyed)
+    const next = new Set(surveyedZones)
     next.add(zoneId)
-    setSurveyed(next)
+    setSurveyedZones(next)
     setActiveZone(zoneId)
   }
 
-  const allSurveyed = surveyed.size === ZONES.length
+  const allSurveyed = surveyedZones.size === ZONES.length
 
   const pick = (i: number) => {
     if (chosen !== null) return
     setChosen(i)
-    if (DECISIONS[step].options[i].correct) setCorrect((c) => c + 1)
+    if (DECISIONS[decisionStep].options[i].correct) setCorrectCount((c) => c + 1)
   }
 
-  const zone = ZONES.find((z) => z.id === (stage === 'casework' ? dc.zoneId : activeZone))
-  const entryTime = `${fmtPad(20)}:${fmtPad(10 + ZONES.length - surveyed.size)}`
+  const zone = ZONES.find((z) => z.id === (currentStage === 'casework' ? currentDecision.zoneId : activeZone))
+  const entryTime = `${fmtPad(20)}:${fmtPad(10 + ZONES.length - surveyedZones.size)}`
 
   const resetAll = () => {
-    setStage('kit')
-    setDonned(new Set())
+    setCurrentStage('kit')
+    setEquippedItems(new Set())
     setKitMistakes(0)
     setDelisted(new Set())
-    setSurveyed(new Set())
+    setSurveyedZones(new Set())
     setActiveZone(null)
-    setStep(0)
+    setDecisionStep(0)
     setChosen(null)
-    setCorrect(0)
+    setCorrectCount(0)
     onDone?.()
   }
 
-  if (stage === 'kit') {
+  if (currentStage === 'kit') {
     return (
       <div className="space-y-5">
         <div className="flex items-start gap-2">
@@ -283,8 +284,8 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {KIT.map((item) => {
-            const worn = donned.has(item.id)
+          {KIT_ITEMS.map((item) => {
+            const worn = equippedItems.has(item.id)
             const dropped = isDelisted(item.id)
             if (dropped) {
               return (
@@ -297,7 +298,7 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
             return (
               <button
                 key={item.id}
-                onClick={() => don(item)}
+                onClick={() => donItem(item)}
                 className={`rounded-lg border px-3 py-3 text-center text-sm transition-colors ${
                   worn
                     ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200'
@@ -319,13 +320,13 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 text-xs">
             <span className="font-mono text-gray-500">
-              {KIT.filter((k) => k.required).filter((k) => donned.has(k.id)).length}/{KIT.filter((k) => k.required).length} worn
+              {KIT_ITEMS.filter((k) => k.required).filter((k) => equippedItems.has(k.id)).length}/{KIT_ITEMS.filter((k) => k.required).length} worn
             </span>
             {kitMistakes > 0 && (
               <span className="font-mono text-crimson-400">+{kitMistakes} slip{kitMistakes > 1 ? 's' : ''} recorded</span>
             )}
           </div>
-          <button className="btn-primary" disabled={!allDonned} onClick={() => setStage('scene')}>
+          <button className="btn-primary" disabled={!allDonned} onClick={() => setCurrentStage('scene')}>
             {allDonned ? 'Enter the scene →' : 'Don all required kit first'}
           </button>
         </div>
@@ -340,21 +341,21 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
     )
   }
 
-  if (stage === 'casework') {
+  if (currentStage === 'casework') {
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-amber-400/80">
           <Icon name="report" className="w-4 h-4" />
-          Scene casework · item {step + 1} of {DECISIONS.length}
+          Scene casework · item {decisionStep + 1} of {DECISIONS.length}
         </div>
         <div className="rounded-xl border border-navy-600/40 bg-navy-900/60 px-5 py-4">
           <p className="text-sm font-semibold text-white mb-2">{zone?.name}</p>
           <p className="text-xs text-gray-400 italic mb-3">“{zone?.observation}”</p>
-          <p className="text-sm text-gray-200">{dc.question}</p>
+          <p className="text-sm text-gray-200">{currentDecision.question}</p>
         </div>
 
         <ol className="grid gap-2">
-          {dc.options.map((o, i) => {
+          {currentDecision.options.map((o, i) => {
             const isChosen = chosen === i
             const revealed = chosen !== null
             return (
@@ -381,34 +382,30 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
         </ol>
 
         <div className="flex items-center justify-center gap-5">
-          <span className="text-xs font-mono text-gray-500">correct so far {correct}/{Math.min(step + 1, DECISIONS.length)}</span>
-          <div className="flex items-center gap-1.5">
-            {DECISIONS.map((_, i) => (
-              <span key={i} className={`h-1.5 w-6 rounded-full ${i < step || (i === step && chosen !== null) ? 'bg-cyan-400' : 'bg-navy-700'}`} />
-            ))}
-          </div>
+          <span className="text-xs font-mono text-gray-500">correct so far {correctCount}/{Math.min(decisionStep + 1, DECISIONS.length)}</span>
+          <ProgressDots total={DECISIONS.length} completed={decisionStep + (chosen !== null ? 1 : 0)} dotClass="h-1.5 w-6 rounded-full" />
           <span className="text-xs font-mono text-gray-500">scene time {entryTime}</span>
         </div>
 
         {chosen !== null && (
-          <div className={`rounded-xl border px-5 py-4 ${dc.options[chosen].correct ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
+          <div className={`rounded-xl border px-5 py-4 ${currentDecision.options[chosen].correct ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
             <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1">
-              {dc.options[chosen].correct ? 'Held the procedure' : 'Procedure slip'}
+              {currentDecision.options[chosen].correct ? 'Held the procedure' : 'Procedure slip'}
             </p>
-            <p className="text-sm text-gray-200 leading-relaxed">{dc.lesson}</p>
+            <p className="text-sm text-gray-200 leading-relaxed">{currentDecision.lesson}</p>
             <button
               className="btn-primary mt-4"
               onClick={() => {
-                if (step === DECISIONS.length - 1) {
-                  setStage('report')
+                if (decisionStep === DECISIONS.length - 1) {
+                  setCurrentStage('report')
                   onDone?.()
                 } else {
-                  setStep((s) => s + 1)
+                  setDecisionStep((s) => s + 1)
                   setChosen(null)
                 }
               }}
             >
-              {step === DECISIONS.length - 1 ? 'Close the scene — compile report' : 'Next item'}
+              {decisionStep === DECISIONS.length - 1 ? 'Close the scene — compile report' : 'Next item'}
             </button>
           </div>
         )}
@@ -416,24 +413,24 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
     )
   }
 
-  if (stage === 'report') {
+  if (currentStage === 'report') {
     return (
       <div className="space-y-5">
-        <div className={`rounded-xl border p-5 ${correct >= 5 ? 'border-emerald-500/40 bg-emerald-500/10' : correct >= 3 ? 'border-amber-500/40 bg-amber-500/10' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
+        <div className={`rounded-xl border p-5 ${correctCount >= 5 ? 'border-emerald-500/40 bg-emerald-500/10' : correctCount >= 3 ? 'border-amber-500/40 bg-amber-500/10' : 'border-crimson-500/40 bg-crimson-600/10'}`}>
           <div className="flex items-center gap-2 mb-1">
             <Icon name="report" className="w-5 h-5 text-gray-300" />
             <h3 className="font-bold">Scene report — 23 Maple Terrace</h3>
           </div>
           <p className="text-sm text-gray-300">
-            {surveyed.size}/{ZONES.length} zones surveyed and photographed · {correct}/{DECISIONS.length} casework decisions held
+            {surveyedZones.size}/{ZONES.length} zones surveyed and photographed · {correctCount}/{DECISIONS.length} casework decisions held
             {kitMistakes > 0 ? ` · ${kitMistakes} kit slip${kitMistakes > 1 ? 's' : ''} in the record` : ''}.
           </p>
           <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-            {correct >= 5
+            {correctCount >= 5
               ? kitMistakes === 0
                 ? 'A disciplined record: patterns read before sampling, electronics isolated on seizure. This scene leaves a defensible digital and physical trail.'
                 : 'Strong casework, though the kit slip stands in the record — a defence examiner will ask who wore a tie inside the tape.'
-              : correct >= 3
+              : correctCount >= 3
               ? 'A usable record with gaps — a defence examiner would probe the items where the sequence slipped.'
               : 'The record leaks credibility: missed pattern readings and hasty recovery give the defence a clean attack lane.'}
           </p>
@@ -470,7 +467,7 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
           <Icon name="camera" className="w-4 h-4" /> Survey phase · don't touch yet
         </div>
         <span className="text-[11px] font-mono text-gray-500">
-          {surveyed.size}/{ZONES.length} zones recorded
+          {surveyedZones.size}/{ZONES.length} zones recorded
         </span>
       </div>
 
@@ -500,7 +497,7 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
       </text>
 
       {ZONES.map((z) => (
-        <ZoneSpot key={z.id} zone={z} done={surveyed.has(z.id)} active={activeZone === z.id} onClick={() => survey(z.id)} />
+        <ZoneSpot key={z.id} zone={z} done={surveyedZones.has(z.id)} active={activeZone === z.id} onClick={() => survey(z.id)} />
       ))}
     </svg>
       </div>
@@ -527,13 +524,9 @@ export function SceneExplorerSimulator({ onDone }: { onDone?: () => void }) {
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          {ZONES.map((z) => (
-            <span key={z.id} className={`h-1.5 flex-1 rounded-full ${surveyed.has(z.id) ? 'bg-cyan-400' : 'bg-navy-700'}`} />
-          ))}
-        </div>
-        <button className="btn-primary" disabled={!allSurveyed} onClick={() => { setStage('casework'); setActiveZone(null) }}>
-          Begin casework {surveyed.size}/{ZONES.length} surveyed
+        <ProgressDots total={ZONES.length} completed={surveyedZones.size} ariaLabel="Surveyed zones" />
+        <button className="btn-primary" disabled={!allSurveyed} onClick={() => { setCurrentStage('casework'); setActiveZone(null) }}>
+          Begin casework {surveyedZones.size}/{ZONES.length} surveyed
         </button>
       </div>
     </div>

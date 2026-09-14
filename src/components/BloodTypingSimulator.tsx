@@ -40,22 +40,22 @@ export function BloodTypingSimulator() {
   const [bloodType, setBloodType] = useState<Phenotype>('A')
   const [antiAApplied, setAntiAApplied] = useState(false)
   const [antiBApplied, setAntiBApplied] = useState(false)
-  const [explain, setExplain] = useState<'antiA' | 'antiB' | null>(null)
+  const [explanationTarget, setExplanationTarget] = useState<'antiA' | 'antiB' | null>(null)
 
-  const t = typings[bloodType]
+  const typing = typings[bloodType]
 
   const reset = () => {
     setAntiAApplied(false)
     setAntiBApplied(false)
-    setExplain(null)
+    setExplanationTarget(null)
   }
 
-  const resultA = antiAApplied ? t.antiA : null
-  const resultB = antiBApplied ? t.antiB : null
+  const antiAResult = antiAApplied ? typing.antiA : null
+  const antiBResult = antiBApplied ? typing.antiB : null
 
   return (
     <div className="space-y-5">
-      {/* Select RBC */}
+      {/* --- blood type selection --- */}
       <div className="rounded-xl border border-navy-600/40 bg-navy-900/60 p-5">
         <h3 className="text-sm font-bold text-white mb-3">1 · Choose the red blood cell</h3>
         <div className="flex flex-wrap gap-2">
@@ -75,10 +75,10 @@ export function BloodTypingSimulator() {
           ))}
         </div>
         <div className="mt-4 flex items-center gap-4">
-          <Rbc size={72} antigens={t.antigens} />
+          <Rbc size={72} antigens={typing.antigens} />
           <div className="text-sm text-gray-300">
             <p>
-              <span className="font-mono text-crimson-400">RBC antigens:</span> {t.desc}
+              <span className="font-mono text-crimson-400">RBC antigens:</span> {typing.desc}
             </p>
             <p className="mt-1">
               <span className="font-mono text-cyan-400">Plasma antibodies:</span>{' '}
@@ -88,7 +88,7 @@ export function BloodTypingSimulator() {
         </div>
       </div>
 
-      {/* Apply reagents */}
+      {/* --- reagent panels --- */}
       <div className="grid sm:grid-cols-2 gap-4">
         <ReagentPanel
           label="Anti-A"
@@ -96,13 +96,13 @@ export function BloodTypingSimulator() {
           applied={antiAApplied}
           onApply={() => {
             setAntiAApplied(true)
-            setExplain((e) => (e === 'antiA' ? null : e))
+            setExplanationTarget((e) => (e === 'antiA' ? null : e))
           }}
-          result={resultA}
-          explainOpen={explain === 'antiA'}
-          onToggleExplain={() => setExplain((e) => (e === 'antiA' ? null : 'antiA'))}
+          result={antiAResult}
+          explainOpen={explanationTarget === 'antiA'}
+          onToggleExplain={() => setExplanationTarget((e) => (e === 'antiA' ? null : 'antiA'))}
           bloodType={bloodType}
-          rbcAntigens={t.antigens}
+          rbcAntigens={typing.antigens}
         />
         <ReagentPanel
           label="Anti-B"
@@ -110,16 +110,17 @@ export function BloodTypingSimulator() {
           applied={antiBApplied}
           onApply={() => {
             setAntiBApplied(true)
-            setExplain((e) => (e === 'antiB' ? null : e))
+            setExplanationTarget((e) => (e === 'antiB' ? null : e))
           }}
-          result={resultB}
-          explainOpen={explain === 'antiB'}
-          onToggleExplain={() => setExplain((e) => (e === 'antiB' ? null : 'antiB'))}
+          result={antiBResult}
+          explainOpen={explanationTarget === 'antiB'}
+          onToggleExplain={() => setExplanationTarget((e) => (e === 'antiB' ? null : 'antiB'))}
           bloodType={bloodType}
-          rbcAntigens={t.antigens}
+          rbcAntigens={typing.antigens}
         />
       </div>
 
+      {/* --- outcome readout --- */}
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
         <p className="text-xs text-amber-200/90 leading-relaxed">
           <span className="font-semibold">Limitations to hold onto:</span> this is a simplified model of the agglutination

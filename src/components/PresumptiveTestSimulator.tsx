@@ -84,19 +84,19 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
   const [qcRun, setQcRun] = useState(false)
   const [qcVerified, setQcVerified] = useState(false)
   const [qcResults, setQcResults] = useState<QcResult[]>([])
-  const [qcProceedAttempt, setQcProceedAttempt] = useState(false)
+  const [showQcGuardWarning, setShowQcGuardWarning] = useState(false)
 
   // Bench
-  const [item, setItem] = useState<CaseItem | null>(null)
+  const [selectedExhibit, setSelectedExhibit] = useState<CaseItem | null>(null)
   const [test, setTest] = useState<'luminol' | 'km'>('luminol')
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [result, setResult] = useState<{ test: 'luminol' | 'km'; positive: boolean; time: string } | null>(null)
-  const [log, setLog] = useState<{ n: number; at: string; test: string; result: string; lot: string }[]>([])
+  const [benchLog, setBenchLog] = useState<{ n: number; at: string; test: string; result: string; lot: string }[]>([])
   const [revealed, setRevealed] = useState(false)
   const [completed, setCompleted] = useState(false)
 
-  const lot = reagentLots[test]
+  const lotNumber = reagentLots[test]
 
   useEffect(() => {
     if (!caseRef) setCaseRef('FSL/26-' + String(Math.floor(1000 + Math.random() * 9000)))
@@ -108,12 +108,12 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
     return () => clearInterval(id)
   }, [running])
 
-  const benchStatus: LedState = running ? 'run' : result ? 'ok' : item ? 'idle' : 'idle'
+  const benchStatus: LedState = running ? 'run' : result ? 'ok' : selectedExhibit ? 'idle' : 'idle'
 
   const runQc = () => {
     setQcRunning(true)
     runIdRef.current += 1
-    const whoAmI = runIdRef.current
+    const runId = runIdRef.current
     setTimeout(() => {
       const observed = new Map<string, string>()
       // deterministic per control for the currently selected test (default KM run then luminol run)
@@ -126,7 +126,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
         return { ...c, observed: ok ?? null, pass }
       })
       // only update if this is still the active run
-      if (whoAmI === runIdRef.current) {
+      if (runId === runIdRef.current) {
         setQcResults(rows)
         setQcRun(true)
         setQcRunning(false)
@@ -136,38 +136,38 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
 
   const beginBench = () => {
     if (!qcRun) {
-      setQcProceedAttempt(true)
+      setShowQcGuardWarning(true)
       return
     }
     if (!qcVerified) {
-      setQcProceedAttempt(true)
+      setShowQcGuardWarning(true)
       return
     }
     setStage('bench')
   }
 
   const runTest = () => {
-    if (!item) return
+    if (!selectedExhibit) return
     setRunning(true)
     setResult(null)
     setRevealed(false)
     setElapsed(0)
     runIdRef.current += 1
-    const whoAmI = runIdRef.current
+    const runId = runIdRef.current
     setTimeout(() => {
-      if (whoAmI !== runIdRef.current) return
-      const positive = test === 'luminol' ? item.luminol : item.km
+      if (runId !== runIdRef.current) return
+      const positive = test === 'luminol' ? selectedExhibit.luminol : selectedExhibit.km
       const time = nowLocalInput()
       setResult({ test, positive, time })
       setRunning(false)
-      setLog((l) => [
+      setBenchLog((l) => [
         ...l,
         {
           n: l.length + 1,
           at: time,
           test: test === 'luminol' ? 'Luminol' : 'Kastle-Meyer',
           result: positive ? 'POSITIVE' : 'NEGATIVE',
-          lot: lot.lot,
+          lot: lotNumber.lot,
         },
       ])
       if (!completed) {
@@ -190,12 +190,12 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
     setQcRun(false)
     setQcVerified(false)
     setQcResults([])
-    setQcProceedAttempt(false)
-    setItem(null)
+    setShowQcGuardWarning(false)
+    setSelectedExhibit(null)
     setRunning(false)
     setElapsed(0)
     setResult(null)
-    setLog([])
+    setBenchLog([])
     setRevealed(false)
     setCompleted(false)
     setCaseRef('')
@@ -203,7 +203,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
 
   return (
     <div className="space-y-5">
-      {/* ── STAGE: INTAKE ── */}
+      {/* --- intake stage --- */}
       {stage === 'intake' && (
         <BenchPanel title="Bench log-in · Serology / Biology" status="idle" meta={[{ label: 'Shift', value: '08:00–16:00' }, { label: 'Room', value: 'SER-03' }, { label: 'Started', value: formatReadable(startedAt) }]}>
           <div className="flex flex-col lg:flex-row gap-5">
@@ -237,7 +237,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
         </BenchPanel>
       )}
 
-      {/* ── STAGE: QUALITY CONTROL ── */}
+      {/* --- QC stage --- */}
       {stage === 'qc' && (
         <BenchPanel
           title="Batch QC · Stepwise controls"
@@ -313,7 +313,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
                 <span>QC verified: controls behaved as expected. No case exhibit may be screened until this is ticked. <span className="text-crimson-400">*</span></span>
               </label>
 
-              {qcProceedAttempt && !qcVerified && (
+              {showQcGuardWarning && !qcVerified && (
                 <p className="text-xs text-crimson-400 font-medium flex items-center gap-1.5 animate-fade-in">
                   <Icon name="warning" className="w-3.5 h-3.5" /> Batch cannot proceed without verified controls — screening a case sample against unverified chemistry would poison every downstream result.
                 </p>
@@ -336,7 +336,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
         </BenchPanel>
       )}
 
-      {/* ── STAGE: BENCH ── */}
+      {/* --- bench execution --- */}
       {stage === 'bench' && (
         <>
           <BenchPanel title="Case exhibit · Screening bay" status={benchStatus}
@@ -344,8 +344,8 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
             <div className="grid lg:grid-cols-[auto_1fr] gap-6">
               <div>
                 <p className="text-xs font-mono uppercase tracking-wider text-gray-400 mb-3">Receive exhibit</p>
-                {item ? (
-                  <EvidenceEnvelope exhibit={`${caseRef}-A`} item={item.label} note={item.substrate} />
+                {selectedExhibit ? (
+                  <EvidenceEnvelope exhibit={`${caseRef}-A`} item={selectedExhibit.label} note={selectedExhibit.substrate} />
                 ) : (
                   <div className="rounded-lg border border-dashed border-navy-500/50 px-4 py-8 text-center text-xs text-gray-500">
                     Choose an item from the rack to receive it onto the bench.
@@ -360,9 +360,9 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
                     {items.map((it) => (
                       <button
                         key={it.id}
-                        onClick={() => { setItem(it); setResult(null); setRevealed(false) }}
+                        onClick={() => { setSelectedExhibit(it); setResult(null); setRevealed(false) }}
                         className={`text-left rounded-lg border px-3.5 py-3 transition-colors ${
-                          item?.id === it.id ? 'border-cyan-500/60 bg-cyan-600/10' : 'border-navy-600/40 hover:bg-navy-800'
+                          selectedExhibit?.id === it.id ? 'border-cyan-500/60 bg-cyan-600/10' : 'border-navy-600/40 hover:bg-navy-800'
                         }`}
                       >
                         <span className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -402,9 +402,9 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                   <span className="text-xs text-gray-500">
-                    {item ? `Exhibit sealed · awaiting ${test === 'luminol' ? 'luminol spray' : 'K-M swab'}` : 'No exhibit received.'}
+                    {selectedExhibit ? `Exhibit sealed · awaiting ${test === 'luminol' ? 'luminol spray' : 'K-M swab'}` : 'No exhibit received.'}
                   </span>
-                  <button onClick={runTest} disabled={!item || running} className="btn-primary !px-5 !py-2.5 !text-sm">
+                  <button onClick={runTest} disabled={!selectedExhibit || running} className="btn-primary !px-5 !py-2.5 !text-sm">
                     <Icon name="play" className="w-4 h-4" />
                     {running ? `Reacting · ${elapsed / 2}s` : 'Run screen'}
                   </button>
@@ -413,7 +413,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
             </div>
           </BenchPanel>
 
-          {/* readout */}
+          {/* --- result readout --- */}
           {running && (
             <BenchPanel title="Readout" status="run" meta={[{ label: 'Method', value: test === 'luminol' ? 'Luminol — chemiluminescence' : 'K-M — phenolphthalein oxid.' }, { label: 'Timer', value: `${elapsed / 2}s` }]}>
               <div className="flex items-center gap-4 py-1">
@@ -468,20 +468,20 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
                 )}
               </div>
 
-              {revealed && item && (
+              {revealed && selectedExhibit && (
                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 animate-fade-in">
                   <p className="text-xs font-mono uppercase tracking-wider text-amber-400 mb-2">Exhibit truth · after confirmation</p>
-                  <p className="text-sm font-semibold text-white mb-1">{item.truth}</p>
-                  <p className="text-xs text-amber-200/80 leading-relaxed">{item.note}</p>
+                  <p className="text-sm font-semibold text-white mb-1">{selectedExhibit.truth}</p>
+                  <p className="text-xs text-amber-200/80 leading-relaxed">{selectedExhibit.note}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 max-w-xs">
-                    <TruthRow label="Luminol" ok={observeMatches(item.luminol, log, 'Luminol')} />
-                    <TruthRow label="Kastle-Meyer" ok={observeMatches(item.km, log, 'Kastle-Meyer')} />
+                    <TruthRow label="Luminol" ok={testMatchesReveal(selectedExhibit.luminol, benchLog, 'Luminol')} />
+                    <TruthRow label="Kastle-Meyer" ok={testMatchesReveal(selectedExhibit.km, benchLog, 'Kastle-Meyer')} />
                   </div>
                 </div>
               )}
 
               <BenchPanel title="Bench log" status="ok">
-                {log.length === 0 ? (
+                {benchLog.length === 0 ? (
                   <p className="text-xs text-gray-500">No reads recorded yet.</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -497,7 +497,7 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {log.map((r) => (
+                        {benchLog.map((r) => (
                           <tr key={r.n} className="border-b border-navy-700/40">
                             <td className="py-2 pr-4 text-gray-500">{String(r.n).padStart(2, '0')}</td>
                             <td className="py-2 pr-4 text-gray-400">{formatReadable(r.at)}</td>
@@ -525,8 +525,8 @@ export function PresumptiveTestSimulator({ onDone }: { onDone?: () => void }) {
   )
 }
 
-function observeMatches(expected: boolean, log: { test: string; result: string }[], testName: string): boolean | null {
-  const row = log.find((r) => r.test === testName)
+function testMatchesReveal(expected: boolean, benchLog: { test: string; result: string }[], testName: string): boolean | null {
+  const row = benchLog.find((r) => r.test === testName)
   if (!row) return null
   const observed = row.result === 'POSITIVE'
   return observed === expected

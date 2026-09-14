@@ -28,7 +28,7 @@ const DEVICE_NOTES: Record<EvidenceEvent['device'], string> = {
   Laptop: 'runs 2 minutes slow',
 }
 
-const fmt = (m: number) => `20:${String(m).padStart(2, '0')}`
+const formatClockTime = (m: number) => `20:${String(m).padStart(2, '0')}`
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -40,52 +40,52 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
-  const [pool, setPool] = useState<EvidenceEvent[]>(() => shuffle(EVENTS))
-  const [placed, setPlaced] = useState<EvidenceEvent[]>([])
-  const [reconstructed, setReconstructed] = useState(false)
+  const [eventPool, setEventPool] = useState<EvidenceEvent[]>(() => shuffle(EVENTS))
+  const [placedEvents, setPlacedEvents] = useState<EvidenceEvent[]>([])
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [normalize, setNormalize] = useState(false)
-  const [dragId, setDragId] = useState<string | null>(null)
-  const [warned, setWarned] = useState(false)
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null)
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
 
   const aligned = useMemo(() => {
-    if (!reconstructed) return null
-    return placed.filter((e, i) => e.truthIndex === i).length
-  }, [reconstructed, placed])
+    if (!isSubmitted) return null
+    return placedEvents.filter((e, i) => e.truthIndex === i).length
+  }, [isSubmitted, placedEvents])
 
   const eventById = (id: string) => EVENTS.find((e) => e.id === id)
 
   const placeAt = (id: string, index: number) => {
     const ev = eventById(id)
-    if (!ev || placed.some((p) => p.id === id)) {
-      if (ev) setWarned(true)
+    if (!ev || placedEvents.some((p) => p.id === id)) {
+      if (ev) setShowDuplicateWarning(true)
       return
     }
-    setPool((p) => p.filter((x) => x.id !== id))
-    setPlaced((prev) => {
+    setEventPool((p) => p.filter((x) => x.id !== id))
+    setPlacedEvents((prev) => {
       const next = [...prev]
       next.splice(Math.min(index, next.length), 0, ev)
       return next
     })
-    setDragId(null)
-    setWarned(false)
+    setDraggedEventId(null)
+    setShowDuplicateWarning(false)
   }
 
   const removeFrom = (id: string) => {
     const ev = eventById(id)
     if (!ev) return
-    setPlaced((p) => p.filter((x) => x.id !== id))
-    setPool((p) => [...p, ev])
-    setWarned(false)
+    setPlacedEvents((p) => p.filter((x) => x.id !== id))
+    setEventPool((p) => [...p, ev])
+    setShowDuplicateWarning(false)
   }
 
   const rebuild = () => {
-    setPool(shuffle(EVENTS))
-    setPlaced([])
-    setReconstructed(false)
-    setDragId(null)
+    setEventPool(shuffle(EVENTS))
+    setPlacedEvents([])
+    setIsSubmitted(false)
+    setDraggedEventId(null)
   }
 
-  if (reconstructed) {
+  if (isSubmitted) {
     return (
       <div className="space-y-6">
         <div className="rounded-xl border border-cyan-500/30 bg-cyan-600/10 p-4">
@@ -101,7 +101,7 @@ export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
         </div>
 
         <div className="grid gap-1.5">
-          {placed.map((e, i) => {
+          {placedEvents.map((e, i) => {
             const ok = e.truthIndex === i
             return (
               <div
@@ -113,7 +113,7 @@ export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
                 <span className="text-xs font-mono text-gray-500 bg-navy-800 rounded px-1.5 py-0.5">#{i + 1}</span>
                 <span className={`text-sm font-medium ${ok ? 'text-emerald-200' : 'text-crimson-200'}`}>{e.label}</span>
                 <span className="text-[11px] font-mono text-gray-400 ml-auto">
-                  {e.device} · recorded {fmt(e.rawMinutes)} · true {fmt(e.trueMinutes)}
+                  {e.device} · recorded {formatClockTime(e.rawMinutes)} · true {formatClockTime(e.trueMinutes)}
                 </span>
               </div>
             )
@@ -123,14 +123,14 @@ export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
         {aligned !== EVENTS.length && (
           <div className="space-y-2">
             <p className="text-[10px] font-mono uppercase tracking-widest text-amber-400/80">Divergence report</p>
-            {placed.map((e, i) => {
+            {placedEvents.map((e, i) => {
               if (e.truthIndex === i) return null
               const expected = EVENTS[i]
               return (
                 <div key={e.id} className="rounded-md bg-navy-800/70 border border-navy-600/40 px-3 py-2 text-sm text-gray-300">
                   Position #{i + 1}: you placed <span className="text-crimson-300 font-medium">{e.label}</span> but the true
-                  occupant is <span className="text-emerald-300 font-medium">{expected.label}</span> (true {fmt(expected.trueMinutes)}).
-                  The {e.device} log says {fmt(e.rawMinutes)} — that device's clock {DEVICE_NOTES[e.device]}, which shifts everything.
+                  occupant is <span className="text-emerald-300 font-medium">{expected.label}</span> (true {formatClockTime(expected.trueMinutes)}).
+                  The {e.device} log says {formatClockTime(e.rawMinutes)} — that device's clock {DEVICE_NOTES[e.device]}, which shifts everything.
                 </div>
               )
             })}
@@ -182,52 +182,52 @@ export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
         <div>
           <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-2">Recovered log — click or drag into the timeline</p>
           <div className="space-y-1.5">
-            {pool.map((e) => (
+            {eventPool.map((e) => (
               <button
                 key={e.id}
                 draggable
-                onDragStart={() => setDragId(e.id)}
-                onClick={() => placeAt(e.id, placed.length)}
+                onDragStart={() => setDraggedEventId(e.id)}
+                onClick={() => placeAt(e.id, placedEvents.length)}
                 className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors group ${
-                  dragId === e.id ? 'border-cyan-400/70 bg-cyan-600/20' : 'border-navy-600/50 bg-navy-800/60 hover:border-cyan-500/40 hover:bg-navy-800'
+                  draggedEventId === e.id ? 'border-cyan-400/70 bg-cyan-600/20' : 'border-navy-600/50 bg-navy-800/60 hover:border-cyan-500/40 hover:bg-navy-800'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`text-sm ${dragId === e.id ? 'text-cyan-200' : 'text-gray-200 group-hover:text-white'}`}>{e.label}</span>
-                  <span className="text-[11px] font-mono text-gray-500 shrink-0">{e.device} · {fmt(e.rawMinutes)}</span>
+                  <span className={`text-sm ${draggedEventId === e.id ? 'text-cyan-200' : 'text-gray-200 group-hover:text-white'}`}>{e.label}</span>
+                  <span className="text-[11px] font-mono text-gray-500 shrink-0">{e.device} · {formatClockTime(e.rawMinutes)}</span>
                 </div>
-                <span className="text-[11px] text-cyan-400/80 font-mono">{normalize ? `true ${fmt(e.trueMinutes)}` : 'drag ↕ or click +'}</span>
+                <span className="text-[11px] text-cyan-400/80 font-mono">{normalize ? `true ${formatClockTime(e.trueMinutes)}` : 'drag ↕ or click +'}</span>
               </button>
             ))}
-            {pool.length === 0 && <p className="text-sm text-gray-500">All events placed.</p>}
+            {eventPool.length === 0 && <p className="text-sm text-gray-500">All events placed.</p>}
           </div>
         </div>
 
         <div>
           <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-2">
-            Your timeline — {placed.length}/{EVENTS.length} <span className="normal-case">(click a row to remove)</span>
+            Your timeline — {placedEvents.length}/{EVENTS.length} <span className="normal-case">(click a row to remove)</span>
           </p>
           <div
-            className={`space-y-1.5 ${placed.length === 0 ? 'border-2 border-dashed border-navy-700/60 rounded-lg p-3' : ''}`}
+            className={`space-y-1.5 ${placedEvents.length === 0 ? 'border-2 border-dashed border-navy-700/60 rounded-lg p-3' : ''}`}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => {
-              if (dragId) placeAt(dragId, placed.length)
+              if (draggedEventId) placeAt(draggedEventId, placedEvents.length)
             }}
           >
-            {placed.length === 0 && (
+            {placedEvents.length === 0 && (
               <p className="text-xs text-gray-600 px-2 py-6 text-center">Drop events here.</p>
             )}
-            {placed.map((e, i) => {
-              const maybeTrue = normalize ? fmt(e.trueMinutes) : `recorded ${fmt(e.rawMinutes)}`
+            {placedEvents.map((e, i) => {
+              const maybeTrue = normalize ? formatClockTime(e.trueMinutes) : `recorded ${formatClockTime(e.rawMinutes)}`
               return (
                 <div
                   key={e.id}
                   draggable
-                  onDragStart={() => setDragId(e.id)}
+                  onDragStart={() => setDraggedEventId(e.id)}
                   onDragOver={(ev) => ev.preventDefault()}
                   onDrop={(ev) => {
                     ev.stopPropagation()
-                    if (dragId) placeAt(dragId, i)
+                    if (draggedEventId) placeAt(draggedEventId, i)
                   }}
                   onClick={() => removeFrom(e.id)}
                   title="Click to remove · drag to its new position"
@@ -243,18 +243,18 @@ export function TimelineForgeSimulator({ onDone }: { onDone?: () => void }) {
             })}
           </div>
           <div className="flex flex-wrap gap-3 mt-4">
-            <button className="btn-primary" disabled={placed.length !== EVENTS.length} onClick={() => { setReconstructed(true); onDone?.() }}>
+            <button className="btn-primary" disabled={placedEvents.length !== EVENTS.length} onClick={() => { setIsSubmitted(true); onDone?.() }}>
               Forge the timeline
             </button>
-            <button className="btn-secondary" disabled={placed.length === 0} onClick={() => removeFrom(placed[placed.length - 1].id)}>
+            <button className="btn-secondary" disabled={placedEvents.length === 0} onClick={() => removeFrom(placedEvents[placedEvents.length - 1].id)}>
               Undo last placement
             </button>
             <button className="btn-ghost" onClick={rebuild}>Reset</button>
           </div>
-          {placed.length !== EVENTS.length && (
+          {placedEvents.length !== EVENTS.length && (
             <p className="text-xs text-gray-500 mt-2">Place all {EVENTS.length} events to forge the timeline.</p>
           )}
-          {warned && (
+          {showDuplicateWarning && (
             <p className="text-xs text-amber-400 mt-2">That event is already on the timeline — click a row to remove it first.</p>
           )}
         </div>

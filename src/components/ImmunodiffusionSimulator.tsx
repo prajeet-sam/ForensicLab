@@ -2,23 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from './Icon'
 
 const DURATION = 9000 // ms at 1x
+const LINE_FORM_AT = 0.52 // fraction of max radius at which the fronts meet
 
 export function ImmunodiffusionSimulator() {
   const [playing, setPlaying] = useState(true)
   const [progress, setProgress] = useState(0)
   const [speed, setSpeed] = useState(1)
   const [lineFormed, setLineFormed] = useState(false)
-  const [showExplain, setShowExplain] = useState(false)
+  const [showExplanation, setShowExplanation] = useState(false)
   const raf = useRef<number | null>(null)
-  const lastTime = useRef<number>(0)
   const progressRef = useRef(0)
 
+  // keep the latest progress in a ref so the play loop can resume from it
   useEffect(() => {
-    const MEET = 0.52
     progressRef.current = progress
-    return () => {
-      if (raf.current) cancelAnimationFrame(raf.current)
-    }
   }, [progress])
 
   useEffect(() => {
@@ -26,7 +23,7 @@ export function ImmunodiffusionSimulator() {
       setPlaying(false)
       setLineFormed(true)
     } else {
-      setLineFormed(progress >= 0.52)
+      setLineFormed(progress >= LINE_FORM_AT)
     }
   }, [progress])
 
@@ -54,24 +51,23 @@ export function ImmunodiffusionSimulator() {
     setProgress(0)
     progressRef.current = 0
     setLineFormed(false)
-    setShowExplain(false)
+    setShowExplanation(false)
   }
 
   // geometry
   const viewW = 380
   const viewH = 230
-  const gelPad = 18
   const wellR = 11
   const agWell = { x: 78, y: viewH / 2 }
   const abWell = { x: viewW - 78, y: viewH / 2 }
   const maxR = (abWell.x - agWell.x) / 2 - 14
-  const antR = progress * maxR
-  const abR = progress * maxR
-  const meetProg = progress >= 0.52
+  const frontRadius = progress * maxR
+  const frontsMet = progress >= LINE_FORM_AT
   const lineY = viewH / 2
 
   return (
     <div className="space-y-4">
+      {/* gel visualization */}
       <div className="rounded-xl border border-cyan-500/30 bg-navy-900/70 overflow-hidden">
         <svg viewBox={`0 0 ${viewW} ${viewH}`} className="w-full h-auto" role="img" aria-label="Double immunodiffusion in agarose gel">
           {/* gel background */}
@@ -90,17 +86,17 @@ export function ImmunodiffusionSimulator() {
             </radialGradient>
           </defs>
 
-          {antR > 1 && (
-            <circle cx={agWell.x} cy={agWell.y} r={antR} fill="url(#agGrad)" opacity={meetProg ? 0.35 : 1} />
+          {frontRadius > 1 && (
+            <circle cx={agWell.x} cy={agWell.y} r={frontRadius} fill="url(#agGrad)" opacity={frontsMet ? 0.35 : 1} />
           )}
-          {abR > 1 && (
-            <circle cx={abWell.x} cy={abWell.y} r={abR} fill="url(#abGrad)" opacity={meetProg ? 0.35 : 1} />
+          {frontRadius > 1 && (
+            <circle cx={abWell.x} cy={abWell.y} r={frontRadius} fill="url(#abGrad)" opacity={frontsMet ? 0.35 : 1} />
           )}
 
           {/* precipitin line */}
-          {meetProg && (
+          {frontsMet && (
             <g>
-              <ellipse cx={viewW / 2} cy={lineY} rx={antR / 2.4} ry={11} fill="rgba(255,255,255,0.05)" stroke="none" />
+              <ellipse cx={viewW / 2} cy={lineY} rx={frontRadius / 2.4} ry={11} fill="rgba(255,255,255,0.05)" stroke="none" />
               <path
                 d={`M ${viewW / 2 - 18} ${lineY} C ${viewW / 2 - 6} ${lineY - 9}, ${viewW / 2 + 6} ${lineY - 9}, ${viewW / 2 + 18} ${lineY}`}
                 stroke="#fff"
@@ -135,7 +131,7 @@ export function ImmunodiffusionSimulator() {
           <text x={agWell.x} y={agWell.y + 32} textAnchor="middle" fontSize="8" fill="#fb7185" fontFamily="monospace">Antigen (Ag)</text>
           <text x={abWell.x} y={abWell.y + 32} textAnchor="middle" fontSize="8" fill="#e879f9" fontFamily="monospace">Antibody (Ab)</text>
 
-          {meetProg && (
+          {frontsMet && (
             <text x={viewW / 2} y={lineY - 26} textAnchor="middle" fontSize="8" fill="#fff" fontFamily="monospace" opacity="0.95">
               precipitin line
             </text>
@@ -143,7 +139,7 @@ export function ImmunodiffusionSimulator() {
         </svg>
       </div>
 
-      {/* Controls */}
+      {/* playback controls */}
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => { if (progress >= 1) reset(); setPlaying((p) => !p) }} className="btn-primary !px-4 !py-2 !text-sm" aria-label={playing ? 'Pause diffusion' : 'Play diffusion'}>
           <Icon name={playing ? 'pause' : 'play'} className="w-4 h-4" />
@@ -169,7 +165,7 @@ export function ImmunodiffusionSimulator() {
         </div>
       </div>
 
-      {/* Status */}
+      {/* status readout */}
       <div className="rounded-lg border border-navy-600/40 bg-navy-900/60 px-4 py-3">
         <p className="text-sm text-gray-200">
           {progress < 1 ? (
@@ -192,10 +188,11 @@ export function ImmunodiffusionSimulator() {
         )}
       </div>
 
-      <button onClick={() => setShowExplain((s) => !s)} className="topic-link text-sm">
-        {showExplain ? 'Hide' : 'Why does the line form?'}
+      {/* explanation toggle */}
+      <button onClick={() => setShowExplanation((s) => !s)} className="topic-link text-sm">
+        {showExplanation ? 'Hide' : 'Why does the line form?'}
       </button>
-      {showExplain && (
+      {showExplanation && (
         <div className="rounded-lg border border-cyan-500/40 bg-cyan-600/10 p-4 text-sm text-gray-200 leading-relaxed animate-fade-in">
           <p>
             Each well loads a solution: antigen in one, antibody in the other. Both diffuse outward in all directions.
