@@ -20,3 +20,11 @@ Running log of security fixes. Each entry maps to a commit on the audit branch.
 - `npm audit`: **0 vulnerabilities** (was 4: 1 high dev-only, 3 moderate).
 - `npm run build`: green (Vite 8.3.0, 92 modules, vendor chunk emitted).
 - Remaining recommendations (hosting-level, out of repo scope): enforce HTTPS + HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or CSP `frame-ancestors` header), and a hash/nonce-based strict CSP at the edge.
+
+## 2026-09-14 (follow-up — observability, committed `c7763e8`)
+
+CSP meta was widened to support optional Sentry telemetry (activated only when a DSN is set at build; see CHANGELOG-SCALABILITY.md):
+- `script-src` += `https://browser.sentry-cdn.com`
+- `connect-src` += `https://*.ingest.sentry.io`
+
+No sandbox/trust boundary weakened vs the shipped app: `script-src 'self' 'unsafe-inline'` already allowed inline module preamble; the added origins are Sentry's official CDN + ingest, reachable only when an error is reported and a DSN was configured. If Sentry is never activated, these origins are allowed-but-unused. If you prefer stricter defaults, remove the two origins and Sentry stays inactive.
